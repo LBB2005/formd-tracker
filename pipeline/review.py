@@ -4,6 +4,11 @@
     uv run python -m pipeline.review score       # accuracy of fund/startup and SPV calls
     uv run python -m pipeline.review ai-sample   # review/ai_label_sample.csv (200 + 200)
     uv run python -m pipeline.review ai-score    # precision / recall of the AI tag
+    uv run python -m pipeline.review import form-d-labels.csv   # labels from the Label Desk app
+
+The Label Desk app (review/app/label-desk.html, published as an artifact) is the easy way
+to label: it shows one company at a time, hides the tool's call until you answer, and
+its "Download all labels" button produces the CSV that `import` reads.
 
 AI labelling: for each company, read its homepage (and EDGAR if needed) and set
 human_label to `ai` or `not_ai` using the definition: core product is an AI/ML model or
@@ -174,12 +179,53 @@ def ai_score() -> None:
             print(f"  {r['name'][:50]:<50} tag={r['predicted']:<7} you={r['human_label']:<7} {r['ai_evidence'][:80]}")
 
 
+def import_labels(path: str, reviewer: str = "me") -> None:
+    """Merge a Label Desk CSV export into the review CSVs (one reviewer's labels)."""
+    rows = [r for r in csv.DictReader(open(path)) if r["reviewer"] == reviewer]
+    ai = {r["item_id"].removeprefix("ai-"): r for r in rows if r["queue"] == "ai"}
+    cls = {r["item_id"].removeprefix("cls-"): r for r in rows if r["queue"] == "cls"}
+    n_ai = n_cls = 0
+    if AI_SAMPLE.exists() and ai:
+        sample = list(csv.DictReader(open(AI_SAMPLE)))
+        for r in sample:
+            lab = ai.get(r["cik"])
+            if lab and lab["label_ai"] in ("ai", "not_ai"):
+                r["human_label"], r["notes"] = lab["label_ai"], lab["note"]
+                n_ai += 1
+        with open(AI_SAMPLE, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=AI_COLUMNS)
+            w.writeheader()
+            w.writerows(sample)
+    if SAMPLE.exists() and cls:
+        sample = list(csv.DictReader(open(SAMPLE)))
+        for r in sample:
+            lab = cls.get(r["offering_id"])
+            if lab and lab["label_kind"]:
+                r["reviewed"] = "y"
+                r["true_kind"] = "" if lab["label_kind"] == r["kind"] else lab["label_kind"]
+                veh = lab["label_vehicle"] if lab["label_kind"] == "fund" else ""
+                r["true_vehicle_type"] = "" if not veh or veh == r["vehicle_type"] else veh
+                r["notes"] = lab["note"]
+                n_cls += 1
+        with open(SAMPLE, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=COLUMNS + LABELS)
+            w.writeheader()
+            w.writerows(sample)
+    print(f"Imported {n_ai} AI labels and {n_cls} fund/startup labels from {path}.")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["sample", "score", "ai-sample", "ai-score"])
+    parser.add_argument("command", choices=["sample", "score", "ai-sample", "ai-score", "import"])
+    parser.add_argument("path", nargs="?", help="Label Desk CSV for `import`")
+    parser.add_argument("--reviewer", default="me", help="whose labels to import (default: you)")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "import":
+        if not args.path:
+            raise SystemExit("Usage: uv run python -m pipeline.review import form-d-labels.csv")
+        return import_labels(args.path, args.reviewer)
     {"sample": lambda: sample(args.force), "score": score,
      "ai-sample": lambda: ai_sample(args.force), "ai-score": ai_score}[args.command]()
 

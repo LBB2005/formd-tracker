@@ -1,0 +1,426 @@
+<title>Form D Label Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one review card in the middle of a working desk; queue + scores in a side rail
+   that drops below the card on phones. Labels first, the tool's call revealed after. */
+:root {
+  --bg: #f6f6f2;          /* desk */
+  --surface: #fdfdfb;     /* card */
+  --ink: #141413;
+  --ink-2: #4f4e49;
+  --muted: #86847d;
+  --line: #e0dfd7;
+  --accent: #2a78d6;      /* actions, focus */
+  --accent-ink: #ffffff;
+  --stamp: #8a2a1a;       /* filing-receipt red, labels only */
+  --yes: #1d6b45;         /* agreement / correct */
+  --no: #9a3b2c;          /* disagreement / wrong */
+  --chip: #ecebe4;
+  --display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121211; --surface: #1b1b1a; --ink: #f4f3ee; --ink-2: #c3c2b7; --muted: #8d8b84;
+    --line: #2f2f2c; --accent: #4b93ea; --accent-ink: #0b0b0b; --stamp: #e0826e;
+    --yes: #5cc28d; --no: #ec8a76; --chip: #262624; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --surface: #1b1b1a; --ink: #f4f3ee; --ink-2: #c3c2b7; --muted: #8d8b84;
+  --line: #2f2f2c; --accent: #4b93ea; --accent-ink: #0b0b0b; --stamp: #e0826e;
+  --yes: #5cc28d; --no: #ec8a76; --chip: #262624; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.kicker { font: 500 11px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--stamp); }
+h1 { font: 600 clamp(26px, 4vw, 34px)/1.1 var(--display); margin: 4px 0 0; text-wrap: balance; }
+.who { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+.who img { width: 22px; height: 22px; border-radius: 50%; }
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 14px; }
+.tab { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px;
+  padding: 7px 14px; font: 500 14px var(--sans); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tab .count { font: 12px var(--mono); opacity: .8; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; min-width: 0; }
+.meta-line { font: 12px var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.name { font: 600 clamp(22px, 3.2vw, 28px)/1.2 var(--display); margin: 6px 0 4px; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 14px 0; font-size: 14px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 16px; }
+.links a { font: 500 13px var(--sans); color: var(--accent); text-decoration: none; border: 1px solid var(--line);
+  padding: 5px 10px; border-radius: 8px; }
+.links a:hover, .links a:focus-visible { border-color: var(--accent); }
+.def { font-size: 13px; color: var(--ink-2); background: var(--chip); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
+
+.q { font: 600 15px var(--sans); margin: 0 0 8px; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 9px;
+  padding: 10px 14px; font: 500 14px var(--sans); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.choice kbd { font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.choice[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.choice[aria-pressed="true"] kbd { color: var(--accent-ink); border-color: var(--accent-ink); }
+.choice:focus-visible, .tab:focus-visible, .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.step { margin-top: 14px; }
+textarea { width: 100%; min-height: 44px; margin-top: 14px; resize: vertical; font: 14px var(--sans); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+
+.reveal { margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 14px; font-size: 14px; }
+.verdict { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--sans); padding: 2px 9px; border-radius: 999px; }
+.verdict.match { color: var(--yes); border: 1px solid var(--yes); }
+.verdict.miss { color: var(--no); border: 1px solid var(--no); }
+.evidence { color: var(--ink-2); margin: 6px 0 0; padding-left: 18px; }
+.evidence li { overflow-wrap: anywhere; }
+
+.nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.nav button { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 8px;
+  padding: 8px 12px; font: 500 13px var(--sans); cursor: pointer; }
+.nav .primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.saving { font: 12px var(--mono); color: var(--muted); align-self: center; }
+
+aside { display: grid; gap: 14px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.panel h2 { font: 600 13px var(--sans); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.bar { height: 6px; background: var(--chip); border-radius: 999px; overflow: hidden; margin: 6px 0 4px; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.stat { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 3px 0; }
+.stat b { font: 600 14px var(--sans); font-variant-numeric: tabular-nums; }
+.small { font-size: 12px; color: var(--muted); }
+.reviewers { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.reviewers div { display: flex; align-items: center; gap: 8px; }
+.reviewers img { width: 20px; height: 20px; border-radius: 50%; }
+.dl { width: 100%; margin-top: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px;
+  padding: 8px; font: 500 13px var(--sans); cursor: pointer; }
+.empty { color: var(--ink-2); }
+.note-err { color: var(--no); font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="kicker">Form D tracker · human check</div>
+      <h1>Label Desk</h1>
+    </div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" id="tab-ai" data-queue="ai" aria-selected="true">Is it an AI company? <span class="count" id="count-ai">–</span></button>
+    <button class="tab" role="tab" id="tab-cls" data-queue="cls" aria-selected="false">Fund or startup? <span class="count" id="count-cls">–</span></button>
+  </div>
+
+  <div class="grid">
+    <main class="card" id="card" aria-live="polite">
+      <p class="empty">Loading the review queue…</p>
+    </main>
+
+    <aside>
+      <section class="panel">
+        <h2>Your progress</h2>
+        <div id="progress" class="small">–</div>
+      </section>
+      <section class="panel">
+        <h2>How the tool is doing</h2>
+        <div id="scores" class="small">Label a few companies to see the tool's accuracy against your calls.</div>
+      </section>
+      <section class="panel">
+        <h2>Reviewers</h2>
+        <div id="reviewers" class="reviewers small">Only you so far. Share this page with someone as a Contributor and their labels appear here, with how often you two agree.</div>
+        <button class="dl" id="download" hidden>Download all labels (CSV)</button>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const AI_DEF = "An AI company is one whose core product is an AI or machine-learning model, or is built on one. Mentioning AI features, or using AI internally, does not count.";
+  const KINDS = [["operating_company", "Startup / operating company"], ["fund", "Fund or investment vehicle"], ["real_estate", "Real estate"], ["other_investing", "Other investing"]];
+  const VEHICLES = [["blind_pool", "Blind-pool fund"], ["spv", "SPV / single-deal series"], ["unclear", "Can't tell"]];
+  const AI_CHOICES = [["ai", "AI company", "1"], ["not_ai", "Not AI", "2"], ["unsure", "Can't tell", "3"]];
+  const METRO = {sf_bay: "SF Bay Area", la: "Los Angeles", nyc: "New York City", boston: "Boston", seattle: "Seattle", austin: "Austin", chicago: "Chicago", san_diego: "San Diego", miami: "Miami", denver: "Denver–Boulder"};
+
+  const state = { queue: "ai", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
+                  db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false };
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else if (v != null) n.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid != null) n.append(kid);
+    return n;
+  };
+  const pct = (x) => (x == null || !isFinite(x) ? "–" : `${Math.round(100 * x)}%`);
+  const remember = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const recall = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+
+  // Deterministic shuffle so predicted-AI and not-AI rows are interleaved, same for everyone.
+  const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+  const shuffled = (arr) => arr.slice().sort((a, b) => hash(a.id) - hash(b.id));
+
+  function labelOf(itemId) { return state.mine[itemId]; }
+  function current() { const list = state.items[state.queue]; return list[Math.min(state.idx[state.queue], list.length - 1)]; }
+
+  // ---------- rendering ----------
+  function render() {
+    for (const q of ["ai", "cls"]) {
+      const list = state.items[q], done = list.filter((it) => labelOf(it.id)).length;
+      $("count-" + q).textContent = list.length ? `${done}/${list.length}` : "–";
+      $("tab-" + q).setAttribute("aria-selected", String(q === state.queue));
+    }
+    renderCard(); renderProgress(); renderScores(); renderReviewers();
+  }
+
+  function renderCard() {
+    const card = $("card"); card.replaceChildren();
+    const list = state.items[state.queue];
+    if (!list.length) {
+      card.append(el("p", {class: "empty", text: state.db ? "No companies in this queue yet. Ask Claude to load a review sample." : "This page needs to be opened from claude.ai while signed in, so your labels can be saved."}));
+      return;
+    }
+    const it = current(), lab = labelOf(it.id);
+    card.append(el("div", {class: "meta-line"},
+      el("span", {text: `${state.idx[state.queue] + 1} of ${list.length}`}),
+      el("span", {text: METRO[it.metro] || it.city || ""}),
+      it.stratum ? el("span", {text: it.stratum}) : null));
+    card.append(el("h2", {class: "name", text: it.name}));
+
+    const facts = el("dl", {class: "facts"});
+    const fact = (k, v) => { if (v) facts.append(el("dt", {text: k}), el("dd", {text: v})); };
+    if (state.queue === "ai") {
+      fact("Location", [it.city, METRO[it.metro]].filter(Boolean).join(" · "));
+      fact("Website", it.domain || "not found automatically");
+      fact("Y Combinator", it.yc_batch);
+    } else {
+      fact("Industry (as filed)", it.industry_group);
+      fact("Fund type (as filed)", it.fund_type);
+      fact("Entity", it.entity_type);
+      fact("Exemptions", it.exemptions);
+      fact("Securities", (it.security_class || "").replaceAll("_", " "));
+      fact("Amount sold", it.sold_latest ? "$" + Number(it.sold_latest).toLocaleString("en-US") : "");
+    }
+    card.append(facts);
+
+    const links = el("div", {class: "links"});
+    if (it.domain) links.append(el("a", {href: "https://" + it.domain, target: "_blank", rel: "noopener", text: "Open homepage ↗"}));
+    links.append(el("a", {href: "https://www.google.com/search?q=" + encodeURIComponent(it.name), target: "_blank", rel: "noopener", text: "Search the web ↗"}));
+    if (it.edgar_url) links.append(el("a", {href: it.edgar_url, target: "_blank", rel: "noopener", text: "SEC filings ↗"}));
+    card.append(links);
+
+    if (state.queue === "ai") {
+      card.append(el("div", {class: "def", text: AI_DEF}));
+      card.append(el("p", {class: "q", text: "Is this an AI company?"}));
+      const row = el("div", {class: "choices"});
+      for (const [v, label, key] of AI_CHOICES)
+        row.append(el("button", {class: "choice", "aria-pressed": String(lab?.v === v), onclick: () => save(it, {v})}, label, el("kbd", {text: key})));
+      card.append(row);
+    } else {
+      card.append(el("p", {class: "q", text: "What is this filer?"}));
+      const row = el("div", {class: "choices"});
+      KINDS.forEach(([v, label], i) =>
+        row.append(el("button", {class: "choice", "aria-pressed": String(lab?.kind === v), onclick: () => save(it, {kind: v, vehicle: v === "fund" ? (lab?.vehicle ?? null) : null})}, label, el("kbd", {text: String(i + 1)}))));
+      card.append(row);
+      if (lab?.kind === "fund") {
+        const step = el("div", {class: "step"});
+        step.append(el("p", {class: "q", text: "What kind of fund vehicle?"}));
+        const r2 = el("div", {class: "choices"});
+        VEHICLES.forEach(([v, label], i) =>
+          r2.append(el("button", {class: "choice", "aria-pressed": String(lab?.vehicle === v), onclick: () => save(it, {kind: "fund", vehicle: v})}, label, el("kbd", {text: "QWE"[i]}))));
+        step.append(r2); card.append(step);
+      }
+    }
+
+    const note = el("textarea", {id: "note-" + it.id, placeholder: "Note (optional): why, or what was ambiguous", "aria-label": "Note"});
+    note.value = lab?.note || "";
+    note.addEventListener("change", () => { if (lab) save(it, {note: note.value}); });
+    card.append(note);
+
+    if (lab) card.append(renderReveal(it, lab));
+
+    const nav = el("div", {class: "nav"},
+      el("button", {onclick: () => move(-1), text: "← Back"}),
+      el("span", {class: "saving", id: "saving", text: state.canWrite ? (state.saving ? "Saving…" : lab ? "Saved" : "") : "Read-only: you can't save labels on this page"}),
+      el("button", {class: "primary", onclick: () => move(1, true), text: "Next unlabelled →"}));
+    card.append(nav);
+  }
+
+  function renderReveal(it, lab) {
+    const box = el("div", {class: "reveal"});
+    if (state.queue === "ai") {
+      const said = it.predicted === "ai" ? `tagged AI (${it.ai_tier})` : `not tagged AI${it.ai_tier ? ` (only "${it.ai_tier}" evidence)` : ""}`;
+      const agree = lab.v === "unsure" ? null : (lab.v === "ai") === (it.predicted === "ai");
+      box.append(el("div", {}, el("strong", {text: "The tool " + said + ". "}),
+        agree == null ? el("span", {class: "small", text: "Unsure labels don't count toward accuracy."})
+          : el("span", {class: "verdict " + (agree ? "match" : "miss"), text: agree ? "You agree" : "You disagree"})));
+      const ev = (it.ai_evidence || "").split(" | ").filter(Boolean);
+      if (ev.length) { const ul = el("ul", {class: "evidence"}); ev.slice(0, 6).forEach((e) => ul.append(el("li", {text: e}))); box.append(ul); }
+    } else {
+      const ruleKind = (KINDS.find(([v]) => v === it.kind) || [, it.kind])[1];
+      const ruleVeh = it.vehicle_type ? (VEHICLES.find(([v]) => v === it.vehicle_type) || [, it.vehicle_type])[1] : null;
+      const kindOk = lab.kind === it.kind, vehOk = it.kind !== "fund" || lab.kind !== "fund" || !lab.vehicle || lab.vehicle === it.vehicle_type;
+      box.append(el("div", {}, el("strong", {text: `The rules said: ${ruleKind}${ruleVeh ? " · " + ruleVeh : ""}. `}),
+        el("span", {class: "verdict " + (kindOk && vehOk ? "match" : "miss"), text: kindOk && vehOk ? "You agree" : "You disagree"})));
+      const why = [it.kind_reason && `why: ${it.kind_reason.replaceAll("_", " ")}`, it.vehicle_reason && `vehicle: ${it.vehicle_reason}`, it.manager_key && `manager: ${it.manager_key}`].filter(Boolean);
+      if (why.length) { const ul = el("ul", {class: "evidence"}); why.forEach((e) => ul.append(el("li", {text: e}))); box.append(ul); }
+    }
+    return box;
+  }
+
+  function renderProgress() {
+    const list = state.items[state.queue], done = list.filter((it) => labelOf(it.id)).length;
+    const p = $("progress"); p.replaceChildren();
+    p.append(el("div", {class: "stat"}, el("span", {text: state.queue === "ai" ? "AI check" : "Fund/startup check"}), el("b", {text: `${done} of ${list.length}`})));
+    const bar = el("div", {class: "bar"}); bar.append(el("i", {style: `width:${list.length ? (100 * done) / list.length : 0}%`})); p.append(bar);
+    p.append(el("div", {class: "small", text: done >= list.length && list.length ? "Queue complete. Thank you." : "Keys: 1–4 to answer, Q/W/E for fund type, → next, ← back."}));
+  }
+
+  function renderScores() {
+    const s = $("scores"); s.replaceChildren();
+    const lab = (it) => labelOf(it.id);
+    if (state.queue === "ai") {
+      const rows = state.items.ai.filter((it) => lab(it) && lab(it).v !== "unsure");
+      const tp = rows.filter((it) => it.predicted === "ai" && lab(it).v === "ai").length;
+      const fp = rows.filter((it) => it.predicted === "ai" && lab(it).v === "not_ai").length;
+      const fn = rows.filter((it) => it.predicted !== "ai" && lab(it).v === "ai").length;
+      if (!rows.length) { s.textContent = "Label a few companies to see the tool's accuracy against your calls."; return; }
+      s.append(el("div", {class: "stat"}, el("span", {text: "Precision (tagged AI and really AI)"}), el("b", {text: pct(tp / (tp + fp))})));
+      s.append(el("div", {class: "stat"}, el("span", {text: "Recall in this sample"}), el("b", {text: pct(tp / (tp + fn))})));
+      s.append(el("div", {class: "small", text: `From ${rows.length} decided labels (${tp + fp} tagged, ${rows.length - tp - fp} untagged). The Methodology page reports these once the sample is done.`}));
+    } else {
+      const rows = state.items.cls.filter((it) => lab(it));
+      if (!rows.length) { s.textContent = "Label a few filers to see how often the rules get them right."; return; }
+      const kindOk = rows.filter((it) => lab(it).kind === it.kind).length;
+      const funds = rows.filter((it) => it.kind === "fund" && lab(it).kind === "fund" && lab(it).vehicle);
+      const vehOk = funds.filter((it) => lab(it).vehicle === it.vehicle_type).length;
+      s.append(el("div", {class: "stat"}, el("span", {text: "Fund vs company correct"}), el("b", {text: pct(kindOk / rows.length)})));
+      s.append(el("div", {class: "stat"}, el("span", {text: "SPV vs blind pool correct"}), el("b", {text: funds.length ? pct(vehOk / funds.length) : "–"})));
+      s.append(el("div", {class: "small", text: `From ${rows.length} labels.`}));
+    }
+  }
+
+  async function renderReviewers() {
+    const box = $("reviewers");
+    const ids = Object.keys(state.all);
+    $("download").hidden = !(state.downloads && ids.length);
+    if (ids.length < 1 || (ids.length === 1 && ids[0] === state.uid)) return;
+    const profs = state.user ? await state.user.profiles(ids) : {};
+    box.replaceChildren();
+    for (const id of ids) {
+      const p = profs[id] || {}, n = Object.keys(state.all[id] || {}).length;
+      const row = el("div");
+      if (p.avatarUrl) row.append(el("img", {src: p.avatarUrl, alt: ""}));
+      row.append(el("span", {text: `${p.name || (id === state.uid ? "You" : "A reviewer")} · ${n} labels`}));
+      box.append(row);
+    }
+    if (ids.length >= 2) {
+      // Agreement on items both of the first two reviewers decided.
+      const [a, b] = ids, A = state.all[a], B = state.all[b];
+      const both = Object.keys(A).filter((k) => B[k]);
+      const same = both.filter((k) => (A[k].v ?? A[k].kind + "/" + (A[k].vehicle ?? "")) === (B[k].v ?? B[k].kind + "/" + (B[k].vehicle ?? ""))).length;
+      box.append(el("div", {class: "stat"}, el("span", {text: "Agreement (shared items)"}), el("b", {text: both.length ? `${pct(same / both.length)} of ${both.length}` : "–"})));
+    }
+  }
+
+  // ---------- actions ----------
+  function move(step, toUnlabelled = false) {
+    const list = state.items[state.queue]; if (!list.length) return;
+    let i = state.idx[state.queue];
+    if (toUnlabelled) {
+      for (let k = 1; k <= list.length; k++) { const j = (i + k) % list.length; if (!labelOf(list[j].id)) { i = j; break; } if (k === list.length) i = Math.min(i + 1, list.length - 1); }
+    } else i = Math.max(0, Math.min(list.length - 1, i + step));
+    state.idx[state.queue] = i; remember("desk-idx-" + state.queue, String(i)); render();
+    $("card").scrollIntoView({block: "nearest"});
+  }
+
+  async function save(it, patch) {
+    if (!state.db || !state.uid || !state.canWrite) return;
+    const prev = state.mine[it.id] || {};
+    const note = document.getElementById("note-" + it.id)?.value ?? prev.note ?? "";
+    const next = {...prev, ...patch, note, queue: state.queue, at: new Date().toISOString()};
+    state.mine[it.id] = next; state.saving = true; render();
+    // One write at a time to this reviewer's document.
+    state.writing = state.writing.then(async () => {
+      const ref = state.db.doc("labels/" + state.uid);
+      try {
+        const snap = await ref.get();
+        if (snap.exists) await ref.update({labels: {[it.id]: next}});
+        else await ref.set({labels: {[it.id]: next}});
+      } catch (e) {
+        if (e && e.code === "invalid_argument") state.canWrite = false;
+        else console.warn("save failed", e);
+      } finally { state.saving = false; render(); }
+    });
+    const done = state.queue === "ai" ? "v" in patch : patch.kind && (patch.kind !== "fund" || patch.vehicle);
+    if (done && !("note" in patch && Object.keys(patch).length === 1)) setTimeout(() => move(1, true), 350);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const list = state.items[state.queue]; if (!list.length) return;
+    const it = current();
+    if (e.key === "ArrowRight") return move(1, true);
+    if (e.key === "ArrowLeft") return move(-1);
+    if (state.queue === "ai") { const c = AI_CHOICES.find((x) => x[2] === e.key); if (c) save(it, {v: c[0]}); }
+    else {
+      const k = KINDS[Number(e.key) - 1]; if (k) save(it, {kind: k[0], vehicle: null});
+      const v = VEHICLES["qwe".indexOf(e.key.toLowerCase())]; if (v && labelOf(it.id)?.kind === "fund") save(it, {kind: "fund", vehicle: v[0]});
+    }
+  });
+  for (const t of document.querySelectorAll(".tab")) t.addEventListener("click", () => { state.queue = t.dataset.queue; remember("desk-queue", state.queue); render(); });
+
+  $("download").addEventListener("click", async () => {
+    const all = state.items.ai.concat(state.items.cls), byId = Object.fromEntries(all.map((i) => [i.id, i]));
+    const rows = [["reviewer", "item_id", "queue", "name", "label_ai", "label_kind", "label_vehicle", "note", "labelled_at", "tool_prediction"]];
+    for (const [rid, labs] of Object.entries(state.all)) for (const [iid, l] of Object.entries(labs)) {
+      const it = byId[iid] || {};
+      rows.push([rid === state.uid ? "me" : rid, iid, l.queue, it.name, l.v ?? "", l.kind ?? "", l.vehicle ?? "", l.note ?? "", l.at, it.predicted ?? (it.kind + (it.vehicle_type ? "/" + it.vehicle_type : ""))]);
+    }
+    const csv = rows.map((r) => r.map((x) => `"${String(x ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+    try { await state.downloads.save({filename: "form-d-labels.csv", data: csv}); } catch {}
+  });
+
+  // ---------- boot ----------
+  state.queue = recall("desk-queue") === "cls" ? "cls" : "ai";
+  render();
+  (async () => {
+    const [db, user, downloads] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("downloads")]);
+    state.db = db; state.user = user; state.downloads = downloads;
+    if (user) {
+      const me = await user.me(); state.uid = me.id;
+      const can = await user.can("data.write");
+      const who = $("who"); who.replaceChildren(el("img", {src: me.avatarUrl, alt: ""}), el("span", {text: me.name || "You"}));
+      if (!me.id) state.canWrite = false;
+      if (can === false && !(await user.isOwner())) state.canWrite = false;
+    } else state.canWrite = false;
+    if (!db) { render(); return; }
+    db.collection("items").onSnapshot((snap) => {
+      // Items arrive in chunk documents (items/c0, c1, ...) of up to 50 entries each.
+      const items = snap.docs.flatMap((d) => (d.data() || {}).items || []);
+      state.items.ai = shuffled(items.filter((i) => i.queue === "ai"));
+      state.items.cls = shuffled(items.filter((i) => i.queue === "cls"));
+      for (const q of ["ai", "cls"]) state.idx[q] = Math.min(Number(recall("desk-idx-" + q) || 0), Math.max(0, state.items[q].length - 1));
+      render();
+    }, () => render());
+    db.collection("labels").onSnapshot((snap) => {
+      state.all = {};
+      for (const d of snap.docs) state.all[d.id] = (d.data() || {}).labels || {};
+      if (state.uid && !state.saving) state.mine = {...(state.all[state.uid] || {})};
+      render();
+    }, () => render());
+  })();
+})();
+</script>

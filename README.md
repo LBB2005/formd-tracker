@@ -4,7 +4,57 @@ An open dataset of every SF Bay Area and Los Angeles private raise filed with th
 on Form D since 2019, rebuilt from the SEC's free quarterly data sets, plus a static
 dashboard (Observable Framework, DuckDB in the browser) for GitHub Pages. Total cost: $0.
 
-## Run it
+## Where it runs
+
+Nothing needs to run on your own computer. A GitHub Actions workflow
+(`.github/workflows/refresh.yml`) runs daily at 09:00 UTC, or on demand from the Actions
+tab, and does the following:
+1. Rebuilds the database from the SEC.
+2. Checks new companies' homepages for AI evidence (up to 3 hours per run).
+3. Sends ambiguous homepages to Claude through the Batches API.
+4. Commits the small `data/enrich/` results back to the repo.
+5. Loads BigQuery through keyless Workload Identity Federation.
+6. Publishes the website to GitHub Pages.
+
+The nationwide AI pass finishes over a few daily runs; after that each run only handles
+new filings.
+
+Repository settings it relies on:
+- Secrets: `SEC_USER_AGENT`, `ANTHROPIC_API_KEY`
+- Variables: `BQ_PROJECT`, `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`
+- Pages: source set to GitHub Actions
+
+The Google service account can write only to the `formd` dataset and run BigQuery jobs.
+
+## Scope
+
+- **Data:** every Form D filed in the US since 2019.
+- **Up close:** ten metros, defined by county in `config/geo.yaml`: SF Bay Area, New York
+  City, Los Angeles, Boston, Seattle, Austin, Chicago, San Diego, Miami and Denver–Boulder.
+- **Adding a metro:** add its counties, a bounding box and a map view to `geo.yaml`, then
+  rebuild. The site picks it up automatically.
+- **Platform addresses:** about 25,000 SPVs that file from a platform administrator's
+  office are kept out of the metros (`sql/28_platform_addresses.sql`). AngelList's
+  Belltower in Seattle alone files thousands. An address shared by 200+ issuers that are
+  at least 80% SPV-named counts as a platform address.
+
+## Human review: the Label Desk
+
+`review/app/label-desk.html` is published as a private Claude artifact. It shows one
+company at a time with links to its homepage and SEC filings. You answer first: "AI
+company?" or "fund or startup?". Only then does it reveal what the tool said and why,
+so the accuracy you measure isn't biased by the tool's answer. It keeps a running
+precision/recall, shows agreement when a second reviewer (shared as Contributor) labels
+the same items, and exports a CSV. To score the labels and feed them into the
+Methodology page:
+
+```bash
+uv run python -m pipeline.review import form-d-labels.csv
+uv run python -m pipeline.review ai-score
+uv run python -m pipeline.review score
+```
+
+## Run it locally (optional)
 
 ```bash
 cp .env.example .env          # put your name + email in SEC_USER_AGENT
