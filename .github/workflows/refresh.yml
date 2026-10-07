@@ -1,0 +1,132 @@
+# Daily rebuild: SEC data -> enrichment (chunked) -> BigQuery -> website.
+#
+# One-time setup (repository Settings):
+#   Secrets:    SEC_USER_AGENT     "Your Name your@email"  (SEC fair-access policy)
+#               ANTHROPIC_API_KEY  Claude API key for the AI tie-break judge (optional)
+#   Variables:  BQ_PROJECT, GCP_WIF_PROVIDER, GCP_SA_EMAIL  (BigQuery via keyless
+#               Workload Identity Federation; no Google key is stored anywhere)
+#   Pages:      Build and deployment > Source: GitHub Actions
+#
+# Each run checks new company homepages for up to AI_MINUTES, then saves progress by
+# committing data/enrich/ (small Parquet files) back to the repo, so the nationwide AI pass
+# finishes over a few daily runs and later runs only touch new filings. Claude batches
+# submitted in one run are collected by the next.
+
+name: refresh
+
+on:
+  schedule:
+    - cron: "0 9 * * *"    # daily 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      ai_minutes:
+        description: "Minutes to spend checking new company homepages"
+        default: "180"
+
+permissions:
+  contents: write    # commit data/enrich progress
+  pages: write
+  id-token: write    # Workload Identity Federation (Google) + Pages
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      AI_MINUTES: ${{ inputs.ai_minutes || '180' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      # Only the expensive-to-refetch SEC/Census/ADV downloads are cached; homepage HTML
+      # isn't needed again because ai_checks.parquet records every company checked.
+      - name: Restore download cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/quarterly
+            data/cache/daily
+            data/cache/census
+            data/cache/geocode
+            data/cache/adv
+            data/cache/yc
+          key: formd-cache-${{ github.run_id }}
+          restore-keys: formd-cache-
+
+      - name: Install
+        run: |
+          uv sync
+          npm ci --prefix site
+
+      - name: Build database (SEC quarterly sets + EDGAR filings since)
+        run: uv run python -m pipeline.build
+
+      - name: Enrich (Form ADV, geocoding, AI evidence for new companies)
+        run: |
+          uv run python -m pipeline.adv
+          uv run python -m pipeline.geocode
+          uv run python -u -m pipeline.ai_tag --max-minutes "$AI_MINUTES"
+          uv run python -m pipeline.build --sql-only
+
+      - name: Tests
+        run: uv run pytest -q
+
+      - name: Save enrichment progress
+        run: |
+          git config user.name "formd-bot"
+          git config user.email "formd-bot@users.noreply.github.com"
+          git add data/enrich
+          git diff --cached --quiet || git commit -m "Refresh enrichment (run ${{ github.run_id }})"
+          git push
+
+      - name: Export and build site
+        run: |
+          uv run python -m pipeline.export
+          npm run build --prefix site
+
+      - name: Authenticate to Google Cloud
+        if: ${{ vars.GCP_WIF_PROVIDER != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Set up gcloud
+        if: ${{ vars.GCP_WIF_PROVIDER != '' }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Load BigQuery
+        if: ${{ vars.GCP_WIF_PROVIDER != '' }}
+        env:
+          BQ_PROJECT: ${{ vars.BQ_PROJECT }}
+          BQ_DATASET: ${{ vars.BQ_DATASET || 'formd' }}
+        run: uv run python -m pipeline.bigquery
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

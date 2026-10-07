@@ -1,0 +1,34 @@
+company,method,status,edgar_form_d,ours,registrants,vehicles_named_after
+Databricks,cik,matches EDGAR,15,15,0001587468,8
+Figma,cik,matches EDGAR,5,5,0001579878,0
+Notion Labs,cik,matches EDGAR,3,3,0001781814,0
+Harvey AI,cik,matches EDGAR,6,6,0001974654,1
+Vercel,cik,matches EDGAR,1,1,0001893137,0
+Ramp Business Corp,cik,matches EDGAR,12,12,0001803782,0
+Perplexity AI,cik,matches EDGAR,1,1,0001972171,9
+Replit,cik,matches EDGAR,1,1,0001920974,3
+Anthropic,name search,no Form D as an operating company,0,,,34
+OpenAI,name search,no Form D as an operating company,0,,,23
+Scale AI,name search,no Form D as an operating company,0,,,0
+Anduril Industries,name search,no Form D as an operating company,0,,,2
+Figure AI,cik,matches EDGAR,1,1,0002014185,8
+Glean,name search,no Form D as an operating company,0,,,0
+Character.AI,name search,no Form D as an operating company,0,,,0
+Cursor (Anysphere),name search,no Form D as an operating company,0,,,0
+Cognition AI,name search,no Form D as an operating company,0,,,0
+Decagon,cik,matches EDGAR,1,1,0002043374,0
+Hippocratic AI,name search,no Form D as an operating company,0,,,0
+Physical Intelligence,name search,no Form D as an operating company,0,,,0
+Safe Superintelligence,name search,no Form D as an operating company,0,,,0
+Thinking Machines Lab,name search,no Form D as an operating company,0,,,1
+Together AI,name search,no Form D as an operating company,0,,,0
+Fireworks AI,name search,no Form D as an operating company,0,,,0
+Baseten,cik,matches EDGAR,3,3,0001865393,0
+Weights & Biases,cik,matches EDGAR,1,1,0001987275,0
+Snorkel AI,name search,no Form D as an operating company,0,,,0
+Luma AI,cik,matches EDGAR,1,1,0001971882,0
+Writer,cik,matches EDGAR,1,1,0002044986,1
+Adept AI,name search,no Form D as an operating company,0,,,0
+Inflection AI,cik,matches EDGAR,1,1,0001928505,1
+Mercor,cik,matches EDGAR,3,3,0002103986,1
+Applied Intuition,name search,no Form D as an operating company,0,,,0

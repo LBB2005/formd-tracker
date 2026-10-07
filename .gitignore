@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+data/cache/
+data/*.duckdb
+data/*.duckdb.wal
+data/exports/
+site/node_modules/
+site/dist/
+site/src/.observablehq/cache/
+site/.observablehq/cache/
+site/src/downloads/
+data/*.tmp/
+.claude/
+site/src/data/

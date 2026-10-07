@@ -1,0 +1,83 @@
+# Metro definitions. Each issuer's principal-office ZIP is mapped to a county
+# (Census 2020 ZCTA-to-county file); the county decides the metro.
+# To add a metro: add a block with a label, its county FIPS codes, a bounding box
+# [lat_min, lat_max, lon_min, lon_max] and a map view [lat, lon, zoom], then rebuild.
+# The box catches mistyped ZIPs: an issuer whose street address geocodes outside it is
+# dropped from the metro. Issuers outside every metro still count toward "All US".
+start_year: 2019
+
+metros:
+  sf_bay:
+    label: SF Bay Area
+    bbox: [36.9, 38.5, -123.2, -121.2]
+    view: [37.62, -122.25, 10]
+    counties:
+      "06075": San Francisco
+      "06081": San Mateo
+      "06085": Santa Clara
+      "06001": Alameda
+  nyc:
+    label: New York City
+    bbox: [40.45, 40.95, -74.3, -73.65]
+    view: [40.73, -73.98, 11]
+    counties:
+      "36061": New York (Manhattan)
+      "36047": Kings (Brooklyn)
+      "36081": Queens
+      "36005": Bronx
+      "36085": Richmond (Staten Island)
+  la:
+    label: Los Angeles
+    bbox: [33.2, 34.9, -119.0, -117.3]
+    view: [33.98, -118.2, 9]
+    counties:
+      "06037": Los Angeles
+      "06059": Orange
+  boston:
+    label: Boston
+    bbox: [42.0, 42.75, -71.6, -70.85]
+    view: [42.37, -71.1, 11]
+    counties:
+      "25025": Suffolk
+      "25017": Middlesex
+      "25021": Norfolk
+  seattle:
+    label: Seattle
+    bbox: [47.05, 47.8, -122.55, -121.05]
+    view: [47.6, -122.25, 10]
+    counties:
+      "53033": King
+  austin:
+    label: Austin
+    bbox: [29.9, 30.95, -98.2, -97.25]
+    view: [30.33, -97.75, 10]
+    counties:
+      "48453": Travis
+      "48491": Williamson
+  chicago:
+    label: Chicago
+    bbox: [41.45, 42.2, -88.3, -87.5]
+    view: [41.88, -87.7, 10]
+    counties:
+      "17031": Cook
+  san_diego:
+    label: San Diego
+    bbox: [32.5, 33.55, -117.65, -116.05]
+    view: [32.85, -117.15, 10]
+    counties:
+      "06073": San Diego
+  miami:
+    label: Miami
+    bbox: [25.1, 26.99, -80.9, -79.95]
+    view: [25.95, -80.2, 9]
+    counties:
+      "12086": Miami-Dade
+      "12011": Broward
+      "12099": Palm Beach
+  denver:
+    label: Denver–Boulder
+    bbox: [39.6, 40.3, -105.7, -104.55]
+    view: [39.85, -105.05, 10]
+    counties:
+      "08031": Denver
+      "08013": Boulder

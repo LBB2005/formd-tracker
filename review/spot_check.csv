@@ -1,0 +1,34 @@
+company,cik,search_name,expectation
+Databricks,1587468,,present
+Figma,1579878,,present (control: not AI)
+Notion Labs,1781814,,present (control: not AI)
+Harvey AI,1974654,,present
+Vercel,1893137,,present (control: not AI)
+Ramp Business Corp,1803782,,present (New York; outside both metros)
+Perplexity AI,1972171,,partial
+Replit,1920974,,partial
+Anthropic,,Anthropic,
+OpenAI,,OpenAI,
+Scale AI,,Scale AI,
+Anduril Industries,,Anduril Industries,
+Figure AI,2014185,Figure AI,
+Glean,,Glean Technologies,
+Character.AI,,Character Technologies,
+Cursor (Anysphere),,Anysphere,
+Cognition AI,,Cognition AI,
+Decagon,2043374,Decagon,
+Hippocratic AI,,Hippocratic AI,
+Physical Intelligence,,Physical Intelligence,
+Safe Superintelligence,,Safe Superintelligence,
+Thinking Machines Lab,,Thinking Machines,
+Together AI,,Together Computer,
+Fireworks AI,,Fireworks AI,
+Baseten,1865393,Baseten,
+Weights & Biases,1987275,Weights & Biases,
+Snorkel AI,,Snorkel AI,
+Luma AI,1971882,Luma AI,
+Writer,2044986,Writer,
+Adept AI,,Adept AI,
+Inflection AI,1928505,Inflection AI,
+Mercor,2103986,Mercor,
+Applied Intuition,,Applied Intuition,
