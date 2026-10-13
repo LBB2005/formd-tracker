@@ -41,7 +41,8 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       AI_MINUTES: ${{ inputs.ai_minutes || '180' }}
     steps:
-      - uses: actions/checkout@v4
+      - id: checkout
+        uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -76,17 +77,28 @@ jobs:
       - name: Build database (SEC quarterly sets + EDGAR filings since)
         run: uv run python -m pipeline.build
 
-      - name: Enrich (Form ADV, geocoding, AI evidence for new companies)
-        run: |
-          uv run python -m pipeline.adv
-          uv run python -m pipeline.geocode
-          uv run python -u -m pipeline.ai_tag --max-minutes "$AI_MINUTES"
-          uv run python -m pipeline.build --sql-only
+      # Enrichment steps may fail on a bad day (an outside service down); the run keeps
+      # going with yesterday's results, and progress is always saved.
+      - name: Form ADV advisers
+        continue-on-error: true
+        run: uv run python -m pipeline.adv
+
+      - name: Geocode new addresses
+        continue-on-error: true
+        run: uv run python -m pipeline.geocode
+
+      - name: AI evidence for new companies
+        continue-on-error: true
+        run: uv run python -u -m pipeline.ai_tag --max-minutes "$AI_MINUTES"
+
+      - name: Rebuild tables with enrichment
+        run: uv run python -m pipeline.build --sql-only
 
       - name: Tests
         run: uv run pytest -q
 
       - name: Save enrichment progress
+        if: ${{ always() && steps.checkout.outcome == 'success' }}
         run: |
           git config user.name "formd-bot"
           git config user.email "formd-bot@users.noreply.github.com"

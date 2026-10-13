@@ -7,7 +7,9 @@ reruns cost nothing. Pages are parsed with the standard library only.
 
 import gzip
 import json
+import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from hashlib import sha1
@@ -43,15 +45,30 @@ def _cache_path(folder, key: str):
 def _read_cache(path):
     if not path.exists():
         return None
-    data = json.loads(gzip.decompress(path.read_bytes()))
+    try:
+        data = json.loads(gzip.decompress(path.read_bytes()))
+    except (OSError, EOFError, ValueError):
+        return None  # truncated or corrupt: treat as a miss and refetch
     if time.time() - data.get("fetched_at", 0) > REFRESH_DAYS * 86400:
         return None
     return data
 
 
 def _write_cache(path, data) -> None:
+    # Write to a unique temp file, then rename: two threads checking the same domain
+    # (common for guessed names) must never see each other's half-written file.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(gzip.compress(json.dumps(data).encode()))
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_bytes(gzip.compress(json.dumps(data).encode()))
+    os.replace(tmp, path)
+
+
+# A hostname DNS can resolve: labels of 1-63 letters, digits or hyphens, 253 chars total.
+_HOST = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+
+
+def valid_domain(domain: str) -> bool:
+    return bool(_HOST.match(domain or ""))
 
 
 def robots_allows(domain: str) -> bool:
@@ -62,7 +79,7 @@ def robots_allows(domain: str) -> bool:
             resp = _session.get(f"https://{domain}/robots.txt", timeout=TIMEOUT,
                                 headers={"User-Agent": user_agent()}, allow_redirects=True)
             body = resp.text[:200_000] if resp.status_code == 200 else ""
-        except requests.RequestException:
+        except Exception:  # noqa: BLE001
             body = ""  # unreachable robots.txt: treat as no restrictions
         cached = {"fetched_at": time.time(), "body": body}
         _write_cache(path, cached)
@@ -79,6 +96,9 @@ def fetch(domain: str) -> dict:
         return cached
     result = {"domain": domain, "fetched_at": time.time(), "status": None,
               "final_url": None, "html": "", "error": None}
+    if not valid_domain(domain):
+        result["error"] = "invalid domain"
+        return result
     if not robots_allows(domain):
         result["error"] = "robots.txt disallows"
     else:
@@ -95,7 +115,7 @@ def fetch(domain: str) -> dict:
                         if len(body) > MAX_BYTES:
                             break
                     result["html"] = body.decode(r.encoding or "utf-8", errors="replace")
-        except requests.RequestException as exc:
+        except Exception as exc:  # noqa: BLE001 - one bad site must never stop a run
             result["error"] = type(exc).__name__
     _write_cache(path, result)
     return result

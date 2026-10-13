@@ -31,7 +31,7 @@ import duckdb
 import requests
 
 from pipeline import CACHE_DIR, DATA_DIR, DB_PATH, ROOT
-from pipeline.web import PARKED, REFRESH_DAYS, fetch, final_domain, parse_page
+from pipeline.web import PARKED, REFRESH_DAYS, fetch, final_domain, parse_page, valid_domain
 
 ENRICH_DIR = DATA_DIR / "enrich"
 YC_URL = "https://yc-oss.github.io/api/companies/all.json"
@@ -147,7 +147,7 @@ def candidate_domains(name: str, yc_site: str | None) -> list[tuple[str, str]]:
             cands.append((d, "guess"))
     seen, out = set(), []
     for d, src in cands:
-        if d not in seen:
+        if d not in seen and valid_domain(d):
             seen.add(d)
             out.append((d, src))
     return out[:12]
@@ -168,6 +168,14 @@ def verify(name: str, page) -> bool:
 
 
 def find_domain(cik: str, name: str, yc_site: str | None) -> dict:
+    try:
+        return _find_domain(cik, name, yc_site)
+    except Exception as exc:  # noqa: BLE001 - one company's oddity must not stop the run
+        print(f"  skipped {cik} ({type(exc).__name__}: {exc})", flush=True)
+        return {"cik": cik, "domain": None, "source": None, "status": None, "page": None}
+
+
+def _find_domain(cik: str, name: str, yc_site: str | None) -> dict:
     for domain, source in candidate_domains(name, yc_site):
         res = fetch(domain)
         if not res.get("html"):

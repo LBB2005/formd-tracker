@@ -13,6 +13,7 @@ data/enrich/geocodes.parquet, loaded by the build.
 import csv
 import io
 import json
+import time
 import zipfile
 from hashlib import sha1
 
@@ -48,13 +49,22 @@ def zip_centroids() -> dict[str, tuple[float, float]]:
     return out
 
 
-def geocode_batch(rows: list[tuple[str, str, str, str, str]]) -> dict[str, dict]:
+def geocode_batch(rows: list[tuple[str, str, str, str, str]]) -> dict[str, dict] | None:
+    """Geocode one batch; None if the Census service keeps failing (retried next run)."""
     buf = io.StringIO()
     csv.writer(buf).writerows(rows)
-    resp = requests.post(BATCH_URL, timeout=900,
-                         data={"benchmark": "Public_AR_Current"},
-                         files={"addressFile": ("addresses.csv", buf.getvalue(), "text/csv")})
-    resp.raise_for_status()
+    for attempt in range(4):
+        try:
+            resp = requests.post(BATCH_URL, timeout=900,
+                                 data={"benchmark": "Public_AR_Current"},
+                                 files={"addressFile": ("addresses.csv", buf.getvalue(), "text/csv")})
+            resp.raise_for_status()
+            break
+        except requests.RequestException as exc:
+            print(f"  Census geocoder: {type(exc).__name__} (attempt {attempt + 1}/4)", flush=True)
+            if attempt == 3:
+                return None
+            time.sleep(30 * 2 ** attempt)
     out = {}
     for rec in csv.reader(io.StringIO(resp.text)):
         if len(rec) >= 6 and rec[2] == "Match":
@@ -84,6 +94,9 @@ def main() -> None:
     for i in range(0, len(rows), BATCH_SIZE):
         chunk = rows[i:i + BATCH_SIZE]
         result = geocode_batch(chunk)
+        if result is None:
+            print(f"  batch {i // BATCH_SIZE + 1}: skipped; those addresses are retried next run")
+            continue
         for k, *_ in chunk:
             cache[k] = result.get(k)
         CACHE.parent.mkdir(parents=True, exist_ok=True)

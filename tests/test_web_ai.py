@@ -1,7 +1,7 @@
 """Website-layer helpers in pipeline/ai_tag.py and pipeline/web.py (no network)."""
 
 from pipeline.ai_tag import candidate_domains, core, distinctive, norm, score_page, verify
-from pipeline.web import parse_page
+from pipeline.web import _read_cache, _write_cache, parse_page, valid_domain
 
 
 def test_name_keys():
@@ -47,3 +47,18 @@ def test_score_page_hero_terms_and_ai_domain_ownership():
     assert score_page("humans.ai", plain, "Humans AI, Inc.", "guess")[0] == "strong"
     assert score_page("humans.ai", plain, "Humans, Inc.", "yc")[0] == "strong"
     assert score_page("humans.com", plain, "Humans, Inc.")[0] == "none"
+
+
+def test_invalid_domains_are_never_candidates():
+    long = "tremayne antonio williams estate private jurisdiction tribunal irrevocable trust and us government"
+    assert not valid_domain(long.replace(" ", "") + ".com")
+    assert all(valid_domain(d) for d, _ in candidate_domains(long, None))
+
+
+def test_corrupt_cache_is_a_miss_and_writes_are_atomic(tmp_path):
+    p = tmp_path / "x.json.gz"
+    p.write_bytes(b"\x1f\x8b\x08 half-written")
+    assert _read_cache(p) is None
+    _write_cache(p, {"fetched_at": 9e12, "html": "<p>ok</p>"})
+    assert _read_cache(p)["html"] == "<p>ok</p>"
+    assert not list(tmp_path.glob("*.tmp"))
