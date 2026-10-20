@@ -54,6 +54,30 @@ uv run python -m pipeline.review ai-score
 uv run python -m pipeline.review score
 ```
 
+### Jev as a second labeller
+
+Hand-labelling all 500 items isn't needed. `pipeline/jev.py` asks Jev (TypeSafe AI's
+decision model) the same question the reviewer answers, using the filing details and
+homepage text. Jev never sees the tagger's call. Claude can't play this role, because
+Claude is already the tagger's tie-break judge and would be grading itself.
+
+Each item you haven't labelled gets a route:
+- **disagree:** Jev and the tagger differ. The Desk shows both calls and you pick.
+- **low_conf:** they agree, but Jev's confidence is below 0.8. You decide blind.
+- **blind:** a seeded random draw of confident agreements (40 AI, 10 fund/startup).
+  You decide blind. This measures how often both are wrong together.
+- **auto:** a confident agreement. The shared answer counts as the label.
+
+The Desk's "Needs you" view shows only the first three routes.
+
+```bash
+scripts/set-key.sh                              # saves TYPESAFE_API_KEY to .env, hidden
+uv run python -m pipeline.jev run               # Jev's answers -> review/jev_labels.csv
+uv run python -m pipeline.jev calibrate         # Jev vs your labels: trust it first?
+uv run python -m pipeline.jev sweep             # review/sweep.csv with each item's route
+uv run python -m pipeline.jev score             # tagger accuracy from your labels + auto
+```
+
 ## Run it locally (optional)
 
 ```bash
@@ -78,6 +102,7 @@ caches everything under `data/cache/`. Later builds fetch only new filings;
 | `uv run python -m pipeline.verify_edgar` | compare the companies in `review/spot_check.csv` with EDGAR's live records |
 | `uv run python -m pipeline.review sample` / `score` | 100-row fund/startup/SPV review sample / score your labels |
 | `uv run python -m pipeline.review ai-sample` / `ai-score` | 400-company AI-tag sample / precision and recall from your labels |
+| `uv run python -m pipeline.jev run` / `calibrate` / `sweep` / `score` | Jev second labeller: answers, check against your labels, review routes, scores |
 | `uv run python -m pipeline.ai_tag` | AI evidence: YC directory, company homepages, local-model tie-break (writes `data/enrich/`) |
 | `uv run python -m pipeline.geocode` | map coordinates for SF/LA issuers (Census geocoder, ZIP-centroid fallback) |
 | `uv run python -m pipeline.adv` | Form ADV adviser files (exempt + registered), for matching fund managers |

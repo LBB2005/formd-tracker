@@ -48,6 +48,12 @@ h1 { font: 600 clamp(26px, 4vw, 34px)/1.1 var(--display); margin: 4px 0 0; text-
   padding: 7px 14px; font: 500 14px var(--sans); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .tab .count { font: 12px var(--mono); opacity: .8; }
+.views { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: -4px 0 14px; font-size: 13px; color: var(--ink-2); }
+.views button { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 8px; padding: 4px 10px; font: 500 13px var(--sans); cursor: pointer; }
+.views button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--chip); }
+.hint { font-size: 14px; border: 1px solid var(--no); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
+.hint b { font-weight: 600; }
+.route { color: var(--stamp); }
 
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
 @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
@@ -71,7 +77,7 @@ h1 { font: 600 clamp(26px, 4vw, 34px)/1.1 var(--display); margin: 4px 0 0; text-
 .choice kbd { font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 .choice[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .choice[aria-pressed="true"] kbd { color: var(--accent-ink); border-color: var(--accent-ink); }
-.choice:focus-visible, .tab:focus-visible, .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choice:focus-visible, .tab:focus-visible, .nav button:focus-visible, .views button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .step { margin-top: 14px; }
 textarea { width: 100%; min-height: 44px; margin-top: 14px; resize: vertical; font: 14px var(--sans); color: var(--ink);
   background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
@@ -120,6 +126,11 @@ aside { display: grid; gap: 14px; min-width: 0; }
     <button class="tab" role="tab" id="tab-ai" data-queue="ai" aria-selected="true">Is it an AI company? <span class="count" id="count-ai">–</span></button>
     <button class="tab" role="tab" id="tab-cls" data-queue="cls" aria-selected="false">Fund or startup? <span class="count" id="count-cls">–</span></button>
   </div>
+  <div class="views" id="views" hidden>
+    <span>Show:</span>
+    <button id="view-needs" data-view="needs" aria-pressed="true">Needs you</button>
+    <button id="view-all" data-view="all" aria-pressed="false">All companies</button>
+  </div>
 
   <div class="grid">
     <main class="card" id="card" aria-live="polite">
@@ -152,7 +163,11 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const AI_CHOICES = [["ai", "AI company", "1"], ["not_ai", "Not AI", "2"], ["unsure", "Can't tell", "3"]];
   const METRO = {sf_bay: "SF Bay Area", la: "Los Angeles", nyc: "New York City", boston: "Boston", seattle: "Seattle", austin: "Austin", chicago: "Chicago", san_diego: "San Diego", miami: "Miami", denver: "Denver–Boulder"};
 
-  const state = { queue: "ai", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
+  // Jev routes (pipeline/jev.py): disagree / low_conf / blind need a human; auto was taken from Jev + tagger agreeing.
+  const NEEDS = new Set(["disagree", "low_conf", "blind"]);
+  const ROUTE_TEXT = {disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
+
+  const state = { queue: "ai", view: "needs", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
                   db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false };
   const $ = (id) => document.getElementById(id);
   const el = (tag, attrs = {}, ...kids) => {
@@ -173,21 +188,33 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const shuffled = (arr) => arr.slice().sort((a, b) => hash(a.id) - hash(b.id));
 
   function labelOf(itemId) { return state.mine[itemId]; }
-  function current() { const list = state.items[state.queue]; return list[Math.min(state.idx[state.queue], list.length - 1)]; }
+  const routed = (q) => state.items[q].some((it) => it.route);
+  // The list being worked through: only items that need a human when Jev routes exist and "Needs you" is on.
+  function visible(q) { return state.view === "needs" && routed(q) ? state.items[q].filter((it) => NEEDS.has(it.route)) : state.items[q]; }
+  function current() { const list = visible(state.queue); return list[Math.min(state.idx[state.queue], list.length - 1)]; }
+  function callText(q, v, veh) {
+    if (q === "ai") return v === "ai" ? "AI company" : v === "not_ai" ? "Not AI" : v;
+    const k = (KINDS.find(([x]) => x === v) || [, v])[1], w = veh ? (VEHICLES.find(([x]) => x === veh) || [, veh])[1] : null;
+    return k + (w && v === "fund" ? " · " + w : "");
+  }
+  const jevText = (q, it) => `${callText(q, it.jev, it.jev_vehicle)} (${Math.round(100 * it.jev_conf)}% sure)`;
+  const tagText = (q, it) => q === "ai" ? callText(q, it.predicted) : callText(q, it.kind, it.vehicle_type);
 
   // ---------- rendering ----------
   function render() {
     for (const q of ["ai", "cls"]) {
-      const list = state.items[q], done = list.filter((it) => labelOf(it.id)).length;
+      const list = visible(q), done = list.filter((it) => labelOf(it.id)).length;
       $("count-" + q).textContent = list.length ? `${done}/${list.length}` : "–";
       $("tab-" + q).setAttribute("aria-selected", String(q === state.queue));
     }
+    $("views").hidden = !routed(state.queue);
+    for (const v of ["needs", "all"]) $("view-" + v).setAttribute("aria-pressed", String(v === state.view));
     renderCard(); renderProgress(); renderScores(); renderReviewers();
   }
 
   function renderCard() {
     const card = $("card"); card.replaceChildren();
-    const list = state.items[state.queue];
+    const list = visible(state.queue);
     if (!list.length) {
       card.append(el("p", {class: "empty", text: state.db ? "No companies in this queue yet. Ask Claude to load a review sample." : "This page needs to be opened from claude.ai while signed in, so your labels can be saved."}));
       return;
@@ -196,7 +223,8 @@ aside { display: grid; gap: 14px; min-width: 0; }
     card.append(el("div", {class: "meta-line"},
       el("span", {text: `${state.idx[state.queue] + 1} of ${list.length}`}),
       el("span", {text: METRO[it.metro] || it.city || ""}),
-      it.stratum ? el("span", {text: it.stratum}) : null));
+      it.stratum ? el("span", {text: it.stratum}) : null,
+      ROUTE_TEXT[it.route] ? el("span", {class: "route", text: ROUTE_TEXT[it.route]}) : null));
     card.append(el("h2", {class: "name", text: it.name}));
 
     const facts = el("dl", {class: "facts"});
@@ -220,6 +248,11 @@ aside { display: grid; gap: 14px; min-width: 0; }
     links.append(el("a", {href: "https://www.google.com/search?q=" + encodeURIComponent(it.name), target: "_blank", rel: "noopener", text: "Search the web ↗"}));
     if (it.edgar_url) links.append(el("a", {href: it.edgar_url, target: "_blank", rel: "noopener", text: "SEC filings ↗"}));
     card.append(links);
+
+    // On a disagreement both calls are shown up front: one of them is wrong, you pick. Everything else stays blind.
+    if (it.route === "disagree" && !lab)
+      card.append(el("div", {class: "hint"}, el("b", {text: "Jev and the tagger disagree. "}),
+        `Tagger: ${tagText(state.queue, it)}. Jev: ${jevText(state.queue, it)}.`));
 
     if (state.queue === "ai") {
       card.append(el("div", {class: "def", text: AI_DEF}));
@@ -277,13 +310,15 @@ aside { display: grid; gap: 14px; min-width: 0; }
       const why = [it.kind_reason && `why: ${it.kind_reason.replaceAll("_", " ")}`, it.vehicle_reason && `vehicle: ${it.vehicle_reason}`, it.manager_key && `manager: ${it.manager_key}`].filter(Boolean);
       if (why.length) { const ul = el("ul", {class: "evidence"}); why.forEach((e) => ul.append(el("li", {text: e}))); box.append(ul); }
     }
+    if (it.jev) box.append(el("div", {class: "small", text: `Jev said: ${jevText(state.queue, it)}.`}));
     return box;
   }
 
   function renderProgress() {
-    const list = state.items[state.queue], done = list.filter((it) => labelOf(it.id)).length;
+    const list = visible(state.queue), done = list.filter((it) => labelOf(it.id)).length;
     const p = $("progress"); p.replaceChildren();
-    p.append(el("div", {class: "stat"}, el("span", {text: state.queue === "ai" ? "AI check" : "Fund/startup check"}), el("b", {text: `${done} of ${list.length}`})));
+    const what = (state.queue === "ai" ? "AI check" : "Fund/startup check") + (list !== state.items[state.queue] ? " · needs you" : "");
+    p.append(el("div", {class: "stat"}, el("span", {text: what}), el("b", {text: `${done} of ${list.length}`})));
     const bar = el("div", {class: "bar"}); bar.append(el("i", {style: `width:${list.length ? (100 * done) / list.length : 0}%`})); p.append(bar);
     p.append(el("div", {class: "small", text: done >= list.length && list.length ? "Queue complete. Thank you." : "Keys: 1–4 to answer, Q/W/E for fund type, → next, ← back."}));
   }
@@ -337,7 +372,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
 
   // ---------- actions ----------
   function move(step, toUnlabelled = false) {
-    const list = state.items[state.queue]; if (!list.length) return;
+    const list = visible(state.queue); if (!list.length) return;
     let i = state.idx[state.queue];
     if (toUnlabelled) {
       for (let k = 1; k <= list.length; k++) { const j = (i + k) % list.length; if (!labelOf(list[j].id)) { i = j; break; } if (k === list.length) i = Math.min(i + 1, list.length - 1); }
@@ -370,7 +405,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
 
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
-    const list = state.items[state.queue]; if (!list.length) return;
+    const list = visible(state.queue); if (!list.length) return;
     const it = current();
     if (e.key === "ArrowRight") return move(1, true);
     if (e.key === "ArrowLeft") return move(-1);
@@ -381,6 +416,11 @@ aside { display: grid; gap: 14px; min-width: 0; }
     }
   });
   for (const t of document.querySelectorAll(".tab")) t.addEventListener("click", () => { state.queue = t.dataset.queue; remember("desk-queue", state.queue); render(); });
+  for (const b of document.querySelectorAll(".views button")) b.addEventListener("click", () => {
+    state.view = b.dataset.view; remember("desk-view", state.view);
+    const list = visible(state.queue);
+    state.idx[state.queue] = Math.max(0, list.findIndex((it) => !labelOf(it.id))); render();
+  });
 
   $("download").addEventListener("click", async () => {
     const all = state.items.ai.concat(state.items.cls), byId = Object.fromEntries(all.map((i) => [i.id, i]));
@@ -395,6 +435,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
 
   // ---------- boot ----------
   state.queue = recall("desk-queue") === "cls" ? "cls" : "ai";
+  state.view = recall("desk-view") === "all" ? "all" : "needs";
   render();
   (async () => {
     const [db, user, downloads] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("downloads")]);
@@ -412,7 +453,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
       const items = snap.docs.flatMap((d) => (d.data() || {}).items || []);
       state.items.ai = shuffled(items.filter((i) => i.queue === "ai"));
       state.items.cls = shuffled(items.filter((i) => i.queue === "cls"));
-      for (const q of ["ai", "cls"]) state.idx[q] = Math.min(Number(recall("desk-idx-" + q) || 0), Math.max(0, state.items[q].length - 1));
+      for (const q of ["ai", "cls"]) state.idx[q] = Math.min(Number(recall("desk-idx-" + q) || 0), Math.max(0, visible(q).length - 1));
       render();
     }, () => render());
     db.collection("labels").onSnapshot((snap) => {
