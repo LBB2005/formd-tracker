@@ -78,6 +78,14 @@ uv run python -m pipeline.jev sweep             # review/sweep.csv with each ite
 uv run python -m pipeline.jev score             # tagger accuracy from your labels + auto
 ```
 
+**Result (2026-10-19): not used for labels.** On the 134 hand-labelled AI items, Jev
+(jev-1.13.0) agreed with the reviewer 75% of the time and the tagger 83%. Jev found 34
+of 63 AI companies. A rewritten prompt with examples, plus a probability cutoff, was
+tuned on a frozen half of those labels (`review/jev_split.csv`) and reached 90% there.
+On the held-out half it scored 82% against the tagger's 83%. Where the two confidently
+agreed, both were wrong 13% of the time. That error rate is too high to auto-accept
+labels, so the review samples stay hand-labelled.
+
 ## Run it locally (optional)
 
 ```bash
