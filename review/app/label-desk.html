@@ -163,9 +163,10 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const AI_CHOICES = [["ai", "AI company", "1"], ["not_ai", "Not AI", "2"], ["unsure", "Can't tell", "3"]];
   const METRO = {sf_bay: "SF Bay Area", la: "Los Angeles", nyc: "New York City", boston: "Boston", seattle: "Seattle", austin: "Austin", chicago: "Chicago", san_diego: "San Diego", miami: "Miami", denver: "Denver–Boulder"};
 
-  // Jev routes (pipeline/jev.py): disagree / low_conf / blind need a human; auto was taken from Jev + tagger agreeing.
-  const NEEDS = new Set(["disagree", "low_conf", "blind"]);
-  const ROUTE_TEXT = {disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
+  // Routes set by pipeline.review focus (recheck / todo / later) or pipeline.jev (disagree / low_conf / blind / auto).
+  // "Needs you" shows only the routes that want a human, re-checks first.
+  const NEEDS = new Set(["recheck", "todo", "disagree", "low_conf", "blind"]);
+  const ROUTE_TEXT = {recheck: "Second look", disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
 
   const state = { queue: "ai", view: "needs", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
                   db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false };
@@ -188,9 +189,14 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const shuffled = (arr) => arr.slice().sort((a, b) => hash(a.id) - hash(b.id));
 
   function labelOf(itemId) { return state.mine[itemId]; }
+  // A re-check item counts as done only once it's labelled again after the re-check was set.
+  function shown(it) { const l = labelOf(it.id); return l && (!it.recheck_after || l.at > it.recheck_after) ? l : null; }
   const routed = (q) => state.items[q].some((it) => it.route);
   // The list being worked through: only items that need a human when Jev routes exist and "Needs you" is on.
-  function visible(q) { return state.view === "needs" && routed(q) ? state.items[q].filter((it) => NEEDS.has(it.route)) : state.items[q]; }
+  function visible(q) {
+    if (state.view !== "needs" || !routed(q)) return state.items[q];
+    return state.items[q].filter((it) => NEEDS.has(it.route)).sort((a, b) => (b.route === "recheck") - (a.route === "recheck"));
+  }
   function current() { const list = visible(state.queue); return list[Math.min(state.idx[state.queue], list.length - 1)]; }
   function callText(q, v, veh) {
     if (q === "ai") return v === "ai" ? "AI company" : v === "not_ai" ? "Not AI" : v;
@@ -203,7 +209,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
   // ---------- rendering ----------
   function render() {
     for (const q of ["ai", "cls"]) {
-      const list = visible(q), done = list.filter((it) => labelOf(it.id)).length;
+      const list = visible(q), done = list.filter(shown).length;
       $("count-" + q).textContent = list.length ? `${done}/${list.length}` : "–";
       $("tab-" + q).setAttribute("aria-selected", String(q === state.queue));
     }
@@ -219,7 +225,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
       card.append(el("p", {class: "empty", text: state.db ? "No companies in this queue yet. Ask Claude to load a review sample." : "This page needs to be opened from claude.ai while signed in, so your labels can be saved."}));
       return;
     }
-    const it = current(), lab = labelOf(it.id);
+    const it = current(), lab = shown(it);
     card.append(el("div", {class: "meta-line"},
       el("span", {text: `${state.idx[state.queue] + 1} of ${list.length}`}),
       el("span", {text: METRO[it.metro] || it.city || ""}),
@@ -250,6 +256,8 @@ aside { display: grid; gap: 14px; min-width: 0; }
     card.append(links);
 
     // On a disagreement both calls are shown up front: one of them is wrong, you pick. Everything else stays blind.
+    if (it.route === "recheck" && !lab)
+      card.append(el("div", {class: "hint"}, el("b", {text: "Second look. "}), "Label this one again from scratch; your earlier answer is hidden until you do."));
     if (it.route === "disagree" && !lab)
       card.append(el("div", {class: "hint"}, el("b", {text: "Jev and the tagger disagree. "}),
         `Tagger: ${tagText(state.queue, it)}. Jev: ${jevText(state.queue, it)}.`));
@@ -315,7 +323,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
   }
 
   function renderProgress() {
-    const list = visible(state.queue), done = list.filter((it) => labelOf(it.id)).length;
+    const list = visible(state.queue), done = list.filter(shown).length;
     const p = $("progress"); p.replaceChildren();
     const what = (state.queue === "ai" ? "AI check" : "Fund/startup check") + (list !== state.items[state.queue] ? " · needs you" : "");
     p.append(el("div", {class: "stat"}, el("span", {text: what}), el("b", {text: `${done} of ${list.length}`})));
@@ -375,7 +383,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
     const list = visible(state.queue); if (!list.length) return;
     let i = state.idx[state.queue];
     if (toUnlabelled) {
-      for (let k = 1; k <= list.length; k++) { const j = (i + k) % list.length; if (!labelOf(list[j].id)) { i = j; break; } if (k === list.length) i = Math.min(i + 1, list.length - 1); }
+      for (let k = 1; k <= list.length; k++) { const j = (i + k) % list.length; if (!shown(list[j])) { i = j; break; } if (k === list.length) i = Math.min(i + 1, list.length - 1); }
     } else i = Math.max(0, Math.min(list.length - 1, i + step));
     state.idx[state.queue] = i; remember("desk-idx-" + state.queue, String(i)); render();
     $("card").scrollIntoView({block: "nearest"});
@@ -412,14 +420,14 @@ aside { display: grid; gap: 14px; min-width: 0; }
     if (state.queue === "ai") { const c = AI_CHOICES.find((x) => x[2] === e.key); if (c) save(it, {v: c[0]}); }
     else {
       const k = KINDS[Number(e.key) - 1]; if (k) save(it, {kind: k[0], vehicle: null});
-      const v = VEHICLES["qwe".indexOf(e.key.toLowerCase())]; if (v && labelOf(it.id)?.kind === "fund") save(it, {kind: "fund", vehicle: v[0]});
+      const v = VEHICLES["qwe".indexOf(e.key.toLowerCase())]; if (v && shown(it)?.kind === "fund") save(it, {kind: "fund", vehicle: v[0]});
     }
   });
   for (const t of document.querySelectorAll(".tab")) t.addEventListener("click", () => { state.queue = t.dataset.queue; remember("desk-queue", state.queue); render(); });
   for (const b of document.querySelectorAll(".views button")) b.addEventListener("click", () => {
     state.view = b.dataset.view; remember("desk-view", state.view);
     const list = visible(state.queue);
-    state.idx[state.queue] = Math.max(0, list.findIndex((it) => !labelOf(it.id))); render();
+    state.idx[state.queue] = Math.max(0, list.findIndex((it) => !shown(it))); render();
   });
 
   $("download").addEventListener("click", async () => {
@@ -453,7 +461,8 @@ aside { display: grid; gap: 14px; min-width: 0; }
       const items = snap.docs.flatMap((d) => (d.data() || {}).items || []);
       state.items.ai = shuffled(items.filter((i) => i.queue === "ai"));
       state.items.cls = shuffled(items.filter((i) => i.queue === "cls"));
-      for (const q of ["ai", "cls"]) state.idx[q] = Math.min(Number(recall("desk-idx-" + q) || 0), Math.max(0, visible(q).length - 1));
+      // Start at the first item still to do (re-checks come first in "Needs you").
+      for (const q of ["ai", "cls"]) state.idx[q] = Math.max(0, visible(q).findIndex((it) => !shown(it)));
       render();
     }, () => render());
     db.collection("labels").onSnapshot((snap) => {

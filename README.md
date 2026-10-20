@@ -54,6 +54,12 @@ uv run python -m pipeline.review ai-score
 uv run python -m pipeline.review score
 ```
 
+**Smaller sample.** Labelling all 500 isn't needed. About 200 AI items (100 tagged AI,
+100 not) and 50 fund/startup items give accuracy figures within about ±7 points.
+`pipeline.review focus` gives each Desk item a route. `todo` is a seeded random top-up to
+those targets. `recheck` is an earlier label to look at again (`review/recheck.csv`),
+shown first and blind. `later` is hidden from the Desk's "Needs you" view.
+
 ### Jev as a second labeller
 
 Hand-labelling all 500 items isn't needed. `pipeline/jev.py` asks Jev (TypeSafe AI's

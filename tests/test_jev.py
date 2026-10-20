@@ -78,3 +78,34 @@ def test_desk_adds_jev_fields_and_routes(tmp_path, monkeypatch):
     out = json.loads((dst / "c0.json").read_text())["items"]
     assert out[0] == {"id": "ai-1", "jev": "ai", "jev_vehicle": None, "jev_conf": 0.8, "route": "disagree"}
     assert out[1] == {"id": "ai-2", "route": None}
+
+
+def test_focus_routes_rechecks_and_tops_up_to_targets(tmp_path, monkeypatch):
+    import csv as _csv
+    from pipeline import review
+    ai_rows = [{"cik": f"{n:04d}", "predicted": "ai" if n < 6 else "not_ai",
+                "human_label": "ai" if n in (0, 6) else ""} for n in range(12)]
+    ai_path, cls_path, rc_path = tmp_path / "ai.csv", tmp_path / "cls.csv", tmp_path / "recheck.csv"
+    for path, rows in ((ai_path, ai_rows), (cls_path, [{"offering_id": "o1", "reviewed": ""}]),
+                       (rc_path, [{"item_id": "ai-0000"}])):
+        with open(path, "w", newline="") as fh:
+            w = _csv.DictWriter(fh, fieldnames=list(rows[0]))
+            w.writeheader()
+            w.writerows(rows)
+    monkeypatch.setattr(review, "AI_SAMPLE", ai_path)
+    monkeypatch.setattr(review, "SAMPLE", cls_path)
+    monkeypatch.setattr(review, "RECHECK", rc_path)
+    monkeypatch.setattr(review, "TARGET_AI", {"ai": 3, "not_ai": 2})
+    monkeypatch.setattr(review, "TARGET_CLS", 1)
+    src, dst = tmp_path / "in", tmp_path / "out"
+    src.mkdir()
+    items = [{"id": f"ai-{r['cik']}", "queue": "ai"} for r in ai_rows] + [{"id": "cls-o1", "queue": "cls"}]
+    (src / "c0.json").write_text(json.dumps({"items": items}))
+    review.focus(src, dst)
+    out = {it["id"]: it for it in json.loads((dst / "c0.json").read_text())["items"]}
+    assert out["ai-0000"]["route"] == "recheck" and "recheck_after" in out["ai-0000"]
+    assert "route" not in out["ai-0006"]                       # labelled, not re-checked
+    todo = [i for i, it in out.items() if it.get("route") == "todo"]
+    assert sum(i < "ai-0006" for i in todo if i.startswith("ai")) == 2   # 1 tagged-AI labelled, want 3
+    assert sum(i >= "ai-0006" for i in todo if i.startswith("ai")) == 1  # 1 untagged labelled, want 2
+    assert out["cls-o1"]["route"] == "todo"

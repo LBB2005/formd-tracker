@@ -5,6 +5,7 @@
     uv run python -m pipeline.review ai-sample   # review/ai_label_sample.csv (200 + 200)
     uv run python -m pipeline.review ai-score    # precision / recall of the AI tag
     uv run python -m pipeline.review import form-d-labels.csv   # labels from the Label Desk app
+    uv run python -m pipeline.review focus IN OUT   # route Desk items: re-checks + ~200/50 sample
 
 The Label Desk app (review/app/label-desk.html, published as an artifact) is the easy way
 to label: it shows one company at a time, hides the tool's call until you answer, and
@@ -214,11 +215,62 @@ def import_labels(path: str, reviewer: str = "me") -> None:
     print(f"Imported {n_ai} AI labels and {n_cls} fund/startup labels from {path}.")
 
 
+RECHECK = REVIEW_DIR / "recheck.csv"
+TARGET_AI = {"ai": 100, "not_ai": 100}  # labelled items wanted per tagger call (~200 total)
+TARGET_CLS = 50
+
+
+def focus(src: Path, dst: Path) -> None:
+    """Route Label Desk items (items/c*.json) so the "Needs you" view shows a smaller sample.
+
+    recheck: an existing label to look at again (review/recheck.csv), shown first and blind
+    todo:    a seeded random top-up to reach TARGET_AI / TARGET_CLS labelled items
+    later:   unlabelled and not needed for now
+    """
+    import json
+    import random
+    from datetime import datetime, timezone
+
+    ai = {f"ai-{r['cik']}": r for r in csv.DictReader(open(AI_SAMPLE))}
+    cls = {f"cls-{r['offering_id']}": r for r in csv.DictReader(open(SAMPLE))}
+    done = {i for i, r in ai.items() if r["human_label"].strip() in ("ai", "not_ai")}
+    done |= {i for i, r in cls.items() if r["reviewed"].strip().lower() in ("y", "yes")}
+    recheck = {r["item_id"] for r in csv.DictReader(open(RECHECK))} if RECHECK.exists() else set()
+    rng = random.Random(f"focus-{SEED}")
+    todo = set()
+    for call, want in TARGET_AI.items():
+        pool = sorted(i for i, r in ai.items() if r["predicted"] == call and i not in done)
+        have = sum(ai[i]["predicted"] == call for i in done if i in ai)
+        todo |= set(rng.sample(pool, max(0, min(len(pool), want - have))))
+    pool = sorted(i for i in cls if i not in done)
+    todo |= set(rng.sample(pool, max(0, min(len(pool), TARGET_CLS - len(done & cls.keys())))))
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    dst.mkdir(parents=True, exist_ok=True)
+    counts = Counter()
+    for path in sorted(src.glob("c*.json")):
+        doc = json.loads(path.read_text())
+        for it in doc["items"]:
+            for key in ("route", "recheck_after", "jev", "jev_vehicle", "jev_conf"):
+                it.pop(key, None)
+            iid = it["id"]
+            route = ("recheck" if iid in recheck else "todo" if iid in todo
+                     else None if iid in done else "later")
+            if route:
+                it["route"] = route
+            if route == "recheck":
+                it["recheck_after"] = stamp
+            counts[(it["queue"], route or "labelled")] += 1
+        (dst / path.name).write_text(json.dumps({"items": doc["items"]}))
+    for q in ("ai", "cls"):
+        print(f"{q}: " + ", ".join(f"{r} {n}" for (qq, r), n in sorted(counts.items()) if qq == q))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["sample", "score", "ai-sample", "ai-score", "import"])
-    parser.add_argument("path", nargs="?", help="Label Desk CSV for `import`")
+    parser.add_argument("command", choices=["sample", "score", "ai-sample", "ai-score", "import", "focus"])
+    parser.add_argument("path", nargs="?", help="Label Desk CSV for `import`; items folder for `focus`")
+    parser.add_argument("out", nargs="?", help="output items folder for `focus`")
     parser.add_argument("--reviewer", default="me", help="whose labels to import (default: you)")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
@@ -226,6 +278,10 @@ def main(argv: list[str] | None = None) -> None:
         if not args.path:
             raise SystemExit("Usage: uv run python -m pipeline.review import form-d-labels.csv")
         return import_labels(args.path, args.reviewer)
+    if args.command == "focus":
+        if not (args.path and args.out):
+            raise SystemExit("Usage: uv run python -m pipeline.review focus ITEMS_IN ITEMS_OUT")
+        return focus(Path(args.path), Path(args.out))
     {"sample": lambda: sample(args.force), "score": score,
      "ai-sample": lambda: ai_sample(args.force), "ai-score": ai_score}[args.command]()
 
