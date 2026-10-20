@@ -5,6 +5,7 @@ model that never sees the tagger's call: it gets the filing details and homepage
 and answers the same question the reviewer does, with a confidence.
 
     uv run python -m pipeline.jev run              # ask Jev about every sample item (cached)
+    uv run python -m pipeline.jev run --labelled   # only the items you have labelled
     uv run python -m pipeline.jev calibrate        # Jev vs your labels so far: can we trust it?
     uv run python -m pipeline.jev sweep            # review/sweep.csv: what still needs a human
     uv run python -m pipeline.jev desk IN OUT      # add Jev's picks and routes to Label Desk items
@@ -142,11 +143,12 @@ def load_answers() -> dict[str, dict]:
             if r["prompt_version"] == PROMPT_VERSION and not r["error"]}
 
 
-def run(queue: str | None, limit: int | None, workers: int) -> None:
+def run(queue: str | None, limit: int | None, workers: int, labelled: bool = False) -> None:
     from typesafe_sdk import TypeSafeClient, TypeSafeError
     os.environ.setdefault("TYPESAFE_API_KEY", env_key("TYPESAFE_API_KEY") or "")
     done = load_answers()
-    todo = [it for it in load_items() if it["id"] not in done and (not queue or it["queue"] == queue)]
+    todo = [it for it in load_items() if it["id"] not in done and (not queue or it["queue"] == queue)
+            and (not labelled or it["human"])]
     todo = todo[:limit] if limit else todo
     print(f"Jev: {len(done)} answers cached, asking about {len(todo)} more")
 
@@ -309,10 +311,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("paths", nargs="*", help="for desk: input and output item folders")
     parser.add_argument("--queue", choices=["ai", "cls"])
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--labelled", action="store_true", help="run: only items you've labelled")
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args(argv)
     if args.command == "run":
-        return run(args.queue, args.limit, args.workers)
+        return run(args.queue, args.limit, args.workers, args.labelled)
     if args.command == "desk":
         if len(args.paths) != 2:
             raise SystemExit("Usage: uv run python -m pipeline.jev desk ITEMS_IN ITEMS_OUT")
