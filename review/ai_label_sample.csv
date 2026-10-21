@@ -19,8 +19,8 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0002135515,"Cotan Labs, Inc.",FREMONT,cotan.ai,,ai,likely,"website cotan.ai: hero mentions ai, nlp",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002135515,ai,
 0002032279,Intelliga Corp,SAN FRANCISCO,bland.ai,Summer 2023,ai,likely,website bland.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002032279,ai,
 0001799143,"MISO TECHNOLOGIES, INC.",SAN FRANCISCO,miso.com,,ai,likely,website miso.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001799143,,
-0002052797,"SGNL.AI, Inc.",PALO ALTO,sgnl.com,,ai,likely,".ai name: SGNL.AI, Inc. | ai word: SGNL.AI, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002052797,,
-0001931235,Operait Health Inc.,GLENDALE,operait.ai,,ai,likely,website operait.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001931235,,
+0002052797,"SGNL.AI, Inc.",PALO ALTO,sgnl.com,,ai,likely,".ai name: SGNL.AI, Inc. | ai word: SGNL.AI, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002052797,,"removed: no usable label (reviewer, 2026-10-20)"
+0001931235,Operait Health Inc.,GLENDALE,operait.ai,,ai,likely,website operait.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001931235,,"removed: no usable label (reviewer, 2026-10-20)"
 0001991307,Talofa Corp,CUPERTINO,talofa.ai,,ai,likely,website talofa.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001991307,,
 0001803394,"Zenarate, Inc.",PALO ALTO,zenarate.com,,ai,likely,website zenarate.com: 15 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001803394,ai,
 0002088828,"Ainekko, Co.",SAN FRANCISCO,nekko.ai,,ai,likely,website nekko.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002088828,,
@@ -58,11 +58,11 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001966494,"CARGO Therapeutics, Inc.",SAN MATEO,getcargo.ai,Summer 2023,ai,likely,website getcargo.ai: 9 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001966494,ai,
 0001843648,Beacons AI Inc.,SAN FRANCISCO,,Summer 2019,ai,likely,"ai word: Beacons AI Inc. | ai word: Beacons AI, Inc. (former name)",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001843648,ai,
 0001584169,"Orion Labs, Inc.",SAN FRANCISCO,orion.com,,ai,likely,website orion.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001584169,,
-0001957194,"Syntropy Systems, LLC",HUNTINGTON BEACH,quotientlabs.com,Winter 2026,ai,likely,"website quotientlabs.com: 5 AI-term mentions in homepage text | yc: Quotient Labs (Winter 2026) tags Artificial Intelligence, Developer Tools, SaaS",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001957194,,
+0001957194,"Syntropy Systems, LLC",HUNTINGTON BEACH,quotientlabs.com,Winter 2026,ai,likely,"website quotientlabs.com: 5 AI-term mentions in homepage text | yc: Quotient Labs (Winter 2026) tags Artificial Intelligence, Developer Tools, SaaS",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001957194,,"removed: no usable label (reviewer, 2026-10-20)"
 0001927402,"Lang Artificial Intelligence, Inc.",SAN FRANCISCO,,,ai,likely,"artificial intelligence: Lang Artificial Intelligence, Inc. | intelligence: Lang Artificial Intelligence, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001927402,,
 0002014425,Huski Inc,SANTA CLARA,huski.ai,,ai,likely,website huski.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002014425,,
 0001693764,"RECODE THERAPEUTICS, INC.",MENLO PARK,nero.com,,ai,likely,website nero.com: 13 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001693764,not_ai,
-0002065124,"Healthcare AI Automation, Inc.",SAN FRANCISCO,,,ai,likely,"ai word: Healthcare AI Automation, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002065124,,
+0002065124,"Healthcare AI Automation, Inc.",SAN FRANCISCO,,,ai,likely,"ai word: Healthcare AI Automation, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002065124,,"removed: no usable label (reviewer, 2026-10-20)"
 0002039062,"Lava.ai, Inc.",SAN FRANCISCO,lavaai.io,,ai,strong,".ai name: Lava.ai, Inc. | ai word: Lava.ai, Inc. | website lavaai.io: hero mentions ai",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002039062,ai,
 0002127845,"Protocol Nine, Inc.",SARATOGA,protocolnine.com,,ai,likely,website protocolnine.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002127845,ai,
 0002019711,Higgsfield Inc.,LOS GATOS,higgsfield.ai,,ai,likely,website higgsfield.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002019711,,
@@ -71,7 +71,7 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001968916,Quantum Studios LLC,LOS ANGELES,quantum.com,,ai,likely,website quantum.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001968916,,
 0001579878,"Figma, Inc.",SAN FRANCISCO,figma.com,,ai,likely,website figma.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001579878,ai,
 0001720198,Anomalie Inc.,SAN FRANCISCO,getanomalie.com,,ai,likely,website getanomalie.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001720198,ai,
-0001670741,Radicai LLC,MALIBU,radicai.com,,ai,likely,"website radicai.com: hero mentions a.i, artificial intelligence",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001670741,,
+0001670741,Radicai LLC,MALIBU,radicai.com,,ai,likely,"website radicai.com: hero mentions a.i, artificial intelligence",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001670741,,"removed: no usable label (reviewer, 2026-10-20)"
 0002000954,"Bezi, Inc.",OAKLAND,bezi.com,,ai,likely,website bezi.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002000954,ai,
 0001855297,SINAI Technologies Inc.,SAN FRANCISCO,sinai.com,Winter 2020,ai,likely,website sinai.com: 18 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001855297,,
 0001896751,Fuse Inventory Inc.,PALO ALTO,fuseinventory.com,,ai,likely,website fuseinventory.com: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001896751,,
@@ -120,8 +120,8 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001895176,"Resident Boost, Inc.",SAN FRANCISCO,getzuma.com,Summer 2021,ai,strong,"website getzuma.com: hero mentions ai | yc: Zuma (Summer 2021) tags B2B, Proptech, AI",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001895176,ai,
 0001776954,NEXGENT Inc.,SAN JOSE,ngt.academy,Winter 2018,ai,likely,website ngt.academy: 17 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001776954,not_ai,
 0001757098,ZenSpace Inc,SAN JOSE,zenspace.io,,ai,likely,website zenspace.io: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001757098,,
-0002023805,"daydream Labs, Inc.",SAN FRANCISCO,daydreamlabs.io,,ai,likely,website daydreamlabs.io: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002023805,,
-0002042385,ARTIFICIAL GENIUS INC.,VENICE,artificialgenius.ai,,ai,likely,"website artificialgenius.ai: hero mentions ai, artificial intelligence",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002042385,,
+0002023805,"daydream Labs, Inc.",SAN FRANCISCO,daydreamlabs.io,,ai,likely,website daydreamlabs.io: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002023805,,"removed: no usable label (reviewer, 2026-10-20)"
+0002042385,ARTIFICIAL GENIUS INC.,VENICE,artificialgenius.ai,,ai,likely,"website artificialgenius.ai: hero mentions ai, artificial intelligence",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002042385,,"removed: no usable label (reviewer, 2026-10-20)"
 0001753687,"AnChain.AI, Inc.",SAN JOSE,anchain.ai,,ai,strong,".ai name: AnChain.AI, Inc. | ai word: AnChain.AI, Inc. | website anchain.ai: hero mentions agentic, ai, llm",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001753687,,
 0002065330,Theo AI Inc.,PALO ALTO,theoai.com,,ai,likely,ai word: Theo AI Inc.,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002065330,ai,
 0001973956,"Ventrilo.ai, Inc.",SAN FRANCISCO,ventrilo.com,,ai,likely,".ai name: Ventrilo.ai, Inc. | ai word: Ventrilo.ai, Inc.",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001973956,not_ai,
@@ -143,7 +143,7 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001652632,"MoEngage, Inc.",SAN FRANCISCO,moengage.com,,ai,likely,website moengage.com: hero mentions agentic,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001652632,,
 0001642502,Gamaya Inc.,CAMPBELL,gamaya.com,,ai,likely,"website gamaya.com: hero mentions ai, artificial intelligence",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001642502,,
 0001946401,"Vista Robotics, Inc.",SAN JOSE,versableai.com,Winter 2022,ai,strong,"website versableai.com: hero mentions ai | yc: Versable (Winter 2022) tags Manufacturing, Data Engineering, AI, Automotive",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001946401,ai,
-0002147857,Frick! LLC,LOS ANGELES,frick.ai,,ai,likely,website frick.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002147857,,
+0002147857,Frick! LLC,LOS ANGELES,frick.ai,,ai,likely,website frick.ai: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002147857,,"removed: no usable label (reviewer, 2026-10-20)"
 0001645386,"HOPSKIPDRIVE, INC.",LOS ANGELES,hopskipdrive.com,,ai,likely,website hopskipdrive.com: 7 AI-term mentions in homepage text,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001645386,not_ai,
 0002002107,"Cortex, Inc.",MENLO PARK,cortex.io,Winter 2020,ai,likely,website cortex.io: hero mentions ai,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002002107,,
 0002110269,ASTRO HEALTH INC,SAN FRANCISCO,astroenergyco.com,Winter 2025,ai,likely,"yc: Astro (Winter 2025) tags Solar Power, Energy, Renewable Energy, ClimateTech, AI",https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002110269,,
@@ -208,7 +208,7 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0002065224,"Snazzy Beverages, Inc.",SAN FRANCISCO,snazzybeverages.com,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002065224,,
 0001791958,"Sisu Data, Inc.",SAN FRANCISCO,sisu.io,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001791958,,
 0001971446,"MolQ Entertainment, Inc.",EL SEGUNDO,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001971446,,
-0001973934,Kasypa Inc.,LAKE FOREST,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001973934,,
+0001973934,Kasypa Inc.,LAKE FOREST,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001973934,,"removed: no usable label (reviewer, 2026-10-20)"
 0001715763,Hippo Enterprises Inc.,PALO ALTO,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001715763,not_ai,
 0001823459,"CurtCo Media, LLC",MALIBU,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001823459,not_ai,
 0001623631,"Tenesta, Inc.",SAN FRANCISCO,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001623631,,
@@ -349,7 +349,7 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001606467,"Trove Recommerce, Inc.",BRISBANE,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001606467,not_ai,
 0002068421,Shenandoah Therapeutics Inc.,SOUTH SAN FRANCISCO,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002068421,not_ai,
 0002084253,Lexe Corp,FOSTER CITY,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002084253,not_ai,
-0002030541,"Great Organic, Inc.",GLENDALE,namegarage.com,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002030541,,
+0002030541,"Great Organic, Inc.",GLENDALE,namegarage.com,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002030541,,"removed: no usable label (reviewer, 2026-10-20)"
 0001644906,"SMARTEST EDU, INC.",SANTA MONICA,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001644906,,
 0001948960,Venova Medical Inc,LOS GATOS,venovamedical.com,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001948960,not_ai,
 0001622871,"Dash Radio, Inc.",LOS ANGELES,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001622871,not_ai,
@@ -390,7 +390,7 @@ cik,name,city,domain,yc_batch,predicted,ai_tier,ai_evidence,edgar_url,human_labe
 0001824830,"Viable Fit, Inc.",OAKLAND,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001824830,,
 0001741830,"Kronos Bio, Inc.",SAN MATEO,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001741830,not_ai,
 0002067278,NS SLO CAMP LLC,LOS ANGELES,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002067278,not_ai,
-0002129276,"FixedPoint, Inc.",SAN MATEO,fixedpoint.co,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002129276,,
+0002129276,"FixedPoint, Inc.",SAN MATEO,fixedpoint.co,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002129276,,"removed: no usable label (reviewer, 2026-10-20)"
 0002040830,BPC Metro Coffee LLC,SANTA MONICA,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002040830,not_ai,
 0002018511,"Zum Services, Inc.",REDWOOD CITY,,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0002018511,not_ai,
 0001713171,Ruggable LLC,GARDENA,ruggable.com,,not_ai,,,https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=D&CIK=0001713171,not_ai,

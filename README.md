@@ -59,6 +59,8 @@ uv run python -m pipeline.review score
 `pipeline.review focus` gives each Desk item a route. `todo` is a seeded random top-up to
 those targets. `recheck` is an earlier label to look at again (`review/recheck.csv`),
 shown first and blind. `later` is hidden from the Desk's "Needs you" view.
+Items left unanswered or marked "Can't tell" were removed from the sample at the
+reviewer's request (`review/excluded.csv`); they stay in the dataset, uncounted in scores.
 
 ### Jev as a second labeller
 

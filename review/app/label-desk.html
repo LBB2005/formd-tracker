@@ -166,7 +166,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
   // Routes set by pipeline.review focus (recheck / todo / later) or pipeline.jev (disagree / low_conf / blind / auto).
   // "Needs you" shows only the routes that want a human, re-checks first.
   const NEEDS = new Set(["recheck", "todo", "disagree", "low_conf", "blind"]);
-  const ROUTE_TEXT = {recheck: "Second look", disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
+  const ROUTE_TEXT = {recheck: "Second look", excluded: "Removed from the sample", disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
 
   const state = { queue: "ai", view: "needs", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
                   db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false,
