@@ -190,9 +190,11 @@ def import_labels(path: str, reviewer: str = "me") -> None:
         sample = list(csv.DictReader(open(AI_SAMPLE)))
         for r in sample:
             lab = ai.get(r["cik"])
-            if lab and lab["label_ai"] in ("ai", "not_ai"):
-                r["human_label"], r["notes"] = lab["label_ai"], lab["note"]
-                n_ai += 1
+            if lab and lab["label_ai"] in ("ai", "not_ai", "unsure"):
+                # "unsure" (e.g. on a re-check) clears an earlier answer: it no longer counts.
+                r["human_label"] = "" if lab["label_ai"] == "unsure" else lab["label_ai"]
+                r["notes"] = lab["note"]
+                n_ai += lab["label_ai"] != "unsure"
         with open(AI_SAMPLE, "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=AI_COLUMNS)
             w.writeheader()

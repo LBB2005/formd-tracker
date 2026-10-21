@@ -135,6 +135,14 @@ def main() -> None:
                 where i.is_venture_stage and i.cik in (select cik from offerings
                                                        where is_startup_raise and is_new_in_window)
                 group by 1""").fetchall()),
+            # Size of each half the AI review sample was drawn from (SF/LA venture-stage
+            # startups, tagged vs untagged), so the site can weight recall correctly.
+            "ai_sample_pool": dict(con.execute("""
+                select case when ai_tier in ('strong', 'likely') then 'ai' else 'not_ai' end, count(*)
+                from issuers
+                where metro in ('sf_bay', 'la') and is_venture_stage
+                  and cik in (select cik from offerings where is_startup_raise and is_new_in_window)
+                group by 1""").fetchall()),
             "geocode": dict(con.execute(
                 "select geocode_method, count(*) from issuers where metro is not null "
                 "group by 1").fetchall()),

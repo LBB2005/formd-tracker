@@ -387,7 +387,8 @@ model keep them.
 
 An `ai_tier` row in `manual_overrides.csv` wins over every rule
 (`strong | likely | possible | none`). Funds get `ai_theme` instead of `is_ai`, as in
-"Benchmark AI Infrastructure Fund". Precision and recall come from your 400-row labelled
+"Benchmark AI Infrastructure Fund" (in fact two vehicles raised only to invest in Cerebras, so
+SPVs, but AI-themed all the same). Precision and recall come from your 400-row labelled
 sample (`pipeline.review ai-sample`); the Methodology page shows them once labelled.
 
 ## Analysis caveats found so far

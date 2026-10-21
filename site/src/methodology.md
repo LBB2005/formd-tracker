@@ -19,6 +19,14 @@ const ai = (reviews.ai_label_sample ?? []).filter((r) => ["ai", "not_ai"].includ
 const tp = ai.filter((r) => r.predicted === "ai" && r.human_label.trim() === "ai").length;
 const fp = ai.filter((r) => r.predicted === "ai" && r.human_label.trim() === "not_ai").length;
 const fn = ai.filter((r) => r.predicted !== "ai" && r.human_label.trim() === "ai").length;
+// The sample takes equal numbers of tagged and untagged companies, but untagged ones are far more
+// numerous, so recall is weighted by the size of each half (meta.ai_sample_pool).
+const nTagged = tp + fp, nUntagged = ai.length - nTagged, pool = meta.ai_sample_pool ?? {};
+const estTp = nTagged && pool.ai ? (tp / nTagged) * pool.ai : null;
+const estFn = nUntagged && pool.not_ai ? (fn / nUntagged) * pool.not_ai : null;
+const recallW = estTp != null && estFn != null ? estTp / (estTp + estFn) : null;
+const shareTrue = recallW != null ? (estTp + estFn) / (pool.ai + pool.not_ai) : null;
+const shareTagged = pool.ai ? pool.ai / (pool.ai + (pool.not_ai ?? 0)) : null;
 ```
 
 <div class="kicker">Methodology and limitations</div>
@@ -63,6 +71,13 @@ display(html`<table><thead><tr><th>Hand check of these calls</th><th>Result</th>
 
 **Definition (written before labelling):** an AI company is one whose core product is an AI or ML model, or is built on one. Mentioning AI features does not qualify.
 
+How the hand labels applied it to hard cases:
+- **AI agents** count when the agent is the product (an AI sales rep, an agent runtime), not when an assistant is one feature of other software (a CRM with an "AI order taker").
+- **Consultancies and agencies** that build on other companies' models do not count; firms whose deliverable is a model they train themselves do.
+- **Hardware** counts only when it exists to run AI (AI chips), not when AI is one customer use (lidar sensors).
+- **Teaching or investing in AI** (online courses, AI-themed VC funds) does not make a company an AI company.
+- **The filer is judged, not the website.** Where the guessed homepage belonged to a different company with the same name, the label describes the filer.
+
 Form D has no AI field, so evidence comes from four independent sources:
 1. **The company name**, including former names ("AI", ".ai", "Artificial Intelligence", "LLM"…; "Neural" and "Intelligence" count only as weak signals).
 2. **Y Combinator's directory**, where a matched company is tagged with AI categories.
@@ -80,9 +95,12 @@ Charts count strong and likely. Every company carries its evidence trail.
 display(html`<table><thead><tr><th>AI tag accuracy on a hand-labelled sample</th><th>Result</th></tr></thead><tbody>
   <tr><td>Labelled companies</td><td>${ai.length ? num(ai.length) : "pending: review/ai_label_sample.csv"}</td></tr>
   <tr><td>Precision: of companies tagged AI, share that really are</td><td>${tp + fp ? pct(tp / (tp + fp)) : "pending"}</td></tr>
-  <tr><td>Recall: of real AI companies, share the tag finds</td><td>${tp + fn ? pct(tp / (tp + fn)) : "pending"}</td></tr>
+  <tr><td>Recall: of real AI companies, share the tag finds</td><td>${recallW != null ? pct(recallW) + ` (weighted; ${pct(tp / (tp + fn))} unweighted)` : tp + fn ? pct(tp / (tp + fn)) + " (unweighted)" : "pending"}</td></tr>
+  <tr><td>Share of SF/LA venture-stage startups that are AI</td><td>${shareTrue != null ? `about ${pct(shareTrue)} estimated, against ${pct(shareTagged)} tagged` : "pending"}</td></tr>
 </tbody></table>`)
 ```
+
+The sample took equal numbers of tagged and untagged companies, so raw recall overstates how many AI companies the tag finds: untagged companies are about four times as numerous, and the few AI companies among them add up. The weighted figures scale each half by its real size. The tag therefore **undercounts AI**: treat AI shares in the charts as a floor.
 
 **The tag looks backwards from today.** Homepage, YC and model evidence describe a company as it is now, so a company that pivoted to AI in 2024 also counts as AI for its 2019 raise, which inflates early years. The Overview therefore offers a strict, time-correct alternative: *AI in the company's name as filed on that raise*. It misses most AI companies but can't leak. Treat the two as bounds.
 

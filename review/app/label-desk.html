@@ -169,7 +169,8 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const ROUTE_TEXT = {recheck: "Second look", disagree: "Jev and the tagger disagree", low_conf: "Spot check", blind: "Spot check", auto: "Auto-labelled: Jev and the tagger agree"};
 
   const state = { queue: "ai", view: "needs", items: { ai: [], cls: [] }, idx: { ai: 0, cls: 0 }, mine: {}, all: {}, uid: null,
-                  db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false };
+                  db: null, user: null, downloads: null, canWrite: true, writing: Promise.resolve(), saving: false,
+                  drafts: {}, noteTimer: null };
   const $ = (id) => document.getElementById(id);
   const el = (tag, attrs = {}, ...kids) => {
     const n = document.createElement(tag);
@@ -189,8 +190,13 @@ aside { display: grid; gap: 14px; min-width: 0; }
   const shuffled = (arr) => arr.slice().sort((a, b) => hash(a.id) - hash(b.id));
 
   function labelOf(itemId) { return state.mine[itemId]; }
-  // A re-check item counts as done only once it's labelled again after the re-check was set.
-  function shown(it) { const l = labelOf(it.id); return l && (!it.recheck_after || l.at > it.recheck_after) ? l : null; }
+  // An item is done once it has an answer (a note alone doesn't count). A re-check item counts as
+  // done only once it's answered again after the re-check was set.
+  function shown(it) {
+    const l = labelOf(it.id);
+    if (!l || !(l.v || l.kind)) return null;
+    return !it.recheck_after || (l.decided_at ?? l.at) > it.recheck_after ? l : null;
+  }
   const routed = (q) => state.items[q].some((it) => it.route);
   // The list being worked through: only items that need a human when Jev routes exist and "Needs you" is on.
   function visible(q) {
@@ -219,7 +225,10 @@ aside { display: grid; gap: 14px; min-width: 0; }
   }
 
   function renderCard() {
-    const card = $("card"); card.replaceChildren();
+    const card = $("card"), active = document.activeElement;
+    const keep = active?.tagName === "TEXTAREA" && card.contains(active) ? [active.id, active.selectionStart, active.selectionEnd] : null;
+    card.replaceChildren();
+    if (keep) queueMicrotask(() => { const t = document.getElementById(keep[0]); if (t) { t.focus(); t.setSelectionRange(keep[1], keep[2]); } });
     const list = visible(state.queue);
     if (!list.length) {
       card.append(el("p", {class: "empty", text: state.db ? "No companies in this queue yet. Ask Claude to load a review sample." : "This page needs to be opened from claude.ai while signed in, so your labels can be saved."}));
@@ -285,9 +294,18 @@ aside { display: grid; gap: 14px; min-width: 0; }
       }
     }
 
+    // Notes live in state.drafts while typed, so a re-render (a save landing, the database echoing it
+    // back) never wipes them. Typed before answering: saved with the answer. Typed after: autosaved.
     const note = el("textarea", {id: "note-" + it.id, placeholder: "Note (optional): why, or what was ambiguous", "aria-label": "Note"});
-    note.value = lab?.note || "";
-    note.addEventListener("change", () => { if (lab) save(it, {note: note.value}); });
+    note.value = state.drafts[it.id] ?? labelOf(it.id)?.note ?? "";
+    // Notes save on their own, answered or not.
+    note.addEventListener("input", () => {
+      state.drafts[it.id] = note.value;
+      clearTimeout(state.noteTimer);
+      state.noteTimer = setTimeout(() => save(it, {note: note.value}), 800);
+    });
+    // On leaving the box, save a moment later so the redraw doesn't swallow the click that left it.
+    note.addEventListener("change", () => { clearTimeout(state.noteTimer); state.noteTimer = setTimeout(() => save(it, {note: note.value}), 400); });
     card.append(note);
 
     if (lab) card.append(renderReveal(it, lab));
@@ -333,7 +351,7 @@ aside { display: grid; gap: 14px; min-width: 0; }
 
   function renderScores() {
     const s = $("scores"); s.replaceChildren();
-    const lab = (it) => labelOf(it.id);
+    const lab = (it) => { const l = labelOf(it.id); return l && (l.v || l.kind) ? l : null; };
     if (state.queue === "ai") {
       const rows = state.items.ai.filter((it) => lab(it) && lab(it).v !== "unsure");
       const tp = rows.filter((it) => it.predicted === "ai" && lab(it).v === "ai").length;
@@ -392,8 +410,10 @@ aside { display: grid; gap: 14px; min-width: 0; }
   async function save(it, patch) {
     if (!state.db || !state.uid || !state.canWrite) return;
     const prev = state.mine[it.id] || {};
-    const note = document.getElementById("note-" + it.id)?.value ?? prev.note ?? "";
-    const next = {...prev, ...patch, note, queue: state.queue, at: new Date().toISOString()};
+    const note = patch.note ?? state.drafts[it.id] ?? prev.note ?? "";
+    const now = new Date().toISOString(), answer = "v" in patch || "kind" in patch;
+    const next = {...prev, ...patch, note, queue: state.queue, at: now, ...(answer ? {decided_at: now} : {})};
+    delete state.drafts[it.id];
     state.mine[it.id] = next; state.saving = true; render();
     // One write at a time to this reviewer's document.
     state.writing = state.writing.then(async () => {
@@ -408,7 +428,9 @@ aside { display: grid; gap: 14px; min-width: 0; }
       } finally { state.saving = false; render(); }
     });
     const done = state.queue === "ai" ? "v" in patch : patch.kind && (patch.kind !== "fund" || patch.vehicle);
-    if (done && !("note" in patch && Object.keys(patch).length === 1)) setTimeout(() => move(1, true), 350);
+    const typing = () => document.activeElement?.id === "note-" + it.id;
+    if (done && !("note" in patch && Object.keys(patch).length === 1) && !typing())
+      setTimeout(() => { if (!typing() && current()?.id === it.id) move(1, true); }, 350);
   }
 
   document.addEventListener("keydown", (e) => {

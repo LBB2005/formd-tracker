@@ -1,1 +1,54 @@
 cik,offering_id,field,value,note
+0001544035,,ai_tier,none,"hand label 2026-10-20: not AI (Matterport, Inc.)"
+0001739469,,ai_tier,none,"hand label 2026-10-20: not AI (Platzi, Inc.)"
+0002007484,,ai_tier,none,hand label 2026-10-20: not AI (TrashLab Software Inc.)
+0001914631,,ai_tier,none,"hand label 2026-10-20: not AI (Kong Labs, Inc.)"
+0001693764,,ai_tier,none,"hand label 2026-10-20: not AI (RECODE THERAPEUTICS, INC.)"
+0001743917,,ai_tier,none,"hand label 2026-10-20: not AI (DISQO, Inc.)"
+0002040433,,ai_tier,none,"hand label 2026-10-20: not AI (Torch Therapeutics, Inc.)"
+0001815095,,ai_tier,none,"hand label 2026-10-20: not AI (Ouster, Inc.)"
+0001776954,,ai_tier,none,hand label 2026-10-20: not AI (NEXGENT Inc.)
+0001973956,,ai_tier,none,"hand label 2026-10-20: not AI (Ventrilo.ai, Inc.)"
+0001645386,,ai_tier,none,"hand label 2026-10-20: not AI (HOPSKIPDRIVE, INC.)"
+0001766402,,ai_tier,none,"hand label 2026-10-20: not AI (CloudWalk, Inc.)"
+0001818809,,ai_tier,none,hand label 2026-10-20: not AI (Petri Bio Inc.)
+0002011210,,ai_tier,none,"hand label 2026-10-20: not AI (switstack, Inc.)"
+0002009138,,ai_tier,none,hand label 2026-10-20: not AI (AIROI INC.)
+0001661572,,ai_tier,none,hand label 2026-10-20: not AI (Heap Inc.)
+0002001888,,ai_tier,none,hand label 2026-10-20: not AI (NB Tech Acquisitions Corp)
+0002027185,,ai_tier,likely,hand label 2026-10-20: AI (Plainsight Technologies Inc.)
+0001699260,,ai_tier,likely,"hand label 2026-10-20: AI (SyntheX,Inc.)"
+0001936949,,ai_tier,likely,hand label 2026-10-20: AI (Mochi Health Corp.)
+0001995808,,ai_tier,likely,hand label 2026-10-20: AI (SimpleDataLabs Inc)
+0001880409,,ai_tier,likely,"hand label 2026-10-20: AI (Dagger, Inc.)"
+0002138986,,ai_tier,likely,"hand label 2026-10-20: AI (Occam Edge, Inc.)"
+0001760629,,ai_tier,likely,"hand label 2026-10-20: AI (Unite Genomics, Inc.)"
+0002091203,,ai_tier,likely,"hand label 2026-10-20: AI (Just Cobuild, Co)"
+0001924292,,ai_tier,likely,"hand label 2026-10-20: AI (Apomaya, Inc.)"
+0001977783,,ai_tier,likely,"hand label 2026-10-20: AI (Elementl, Inc.)"
+0001924131,,ai_tier,likely,"hand label 2026-10-20: AI (Kodra Technologies, Inc.)"
+0001733197,0001733197-19-000005,kind,fund,hand label 2026-10-20 (OCKAM INC.)
+0001733197,0001733197-19-000005,manager_key,ockam,hand label 2026-10-20 (OCKAM INC.)
+0001733197,0001733197-19-000005,vehicle_type,blind_pool,hand label 2026-10-20 (OCKAM INC.)
+0001870555,0001683168-21-002797,kind,fund,"hand label 2026-10-20 (424 North 300 East Investors DB, LLC)"
+0001870555,0001683168-21-002797,manager_key,424 north 300 east investors db,"hand label 2026-10-20 (424 North 300 East Investors DB, LLC)"
+0001870555,0001683168-21-002797,vehicle_type,spv,"hand label 2026-10-20 (424 North 300 East Investors DB, LLC)"
+0002086429,0002086429-25-000001,kind,real_estate,hand label 2026-10-20 (BOV 1801 Tiburon LLC)
+0001567624,0001567624-22-000002,kind,fund,"hand label 2026-10-20 (CARTEL EQUITY FUND, LLC)"
+0001567624,0001567624-22-000002,manager_key,cartel equity fund,"hand label 2026-10-20 (CARTEL EQUITY FUND, LLC)"
+0001567624,0001567624-22-000002,vehicle_type,blind_pool,"hand label 2026-10-20 (CARTEL EQUITY FUND, LLC)"
+0002135291,0002135291-26-000002,vehicle_type,spv,"hand label 2026-10-20 (BSF III Advisor, LP)"
+0002105283,0002105283-26-000001,vehicle_type,spv,"hand label 2026-10-20 (Benchmark AI Infrastructure Fund B, L.P.)"
+0002059359,0002059359-25-000001,vehicle_type,blind_pool,"hand label 2026-10-20 (Embedding VC Palm Springs Fund, a series of Decile SPV, LLC)"
+0001884297,0001890257-22-000114,vehicle_type,blind_pool,hand label 2026-10-20 (Ridgeview Arc Capital LLC - Series 8)
+0002140681,0002140681-26-000001,vehicle_type,blind_pool,"hand label 2026-10-20 (Javelin Venture Partners V-A SPV III, LLC)"
+0002140694,0001231919-26-000709,vehicle_type,blind_pool,"hand label 2026-10-20 (Calibrate Ventures NH, LLC)"
+0001817044,0001817044-20-000001,vehicle_type,spv,hand label 2026-10-20 (FundersClub 6XV LLC)
+0001843406,0001843406-21-000001,vehicle_type,spv,hand label 2026-10-20 (Together Venture Partners EMM LLC)
+0002017333,0002017333-24-000001,vehicle_type,blind_pool,hand label 2026-10-20 (HCM S9Aii LP)
+0001116046,0001116046-25-000001,vehicle_type,blind_pool,"hand label 2026-10-20 (GC&H INVESTMENTS, LLC)"
+0001798283,0001798283-20-000001,vehicle_type,blind_pool,"hand label 2026-10-20 (Indus Valley Capital, LP)"
+0002101024,0002101024-25-000001,vehicle_type,spv,hand label 2026-10-20 (Center15 Capital E LLC)
+0001903047,0001903047-22-000001,vehicle_type,blind_pool,"hand label 2026-10-20 (VS Growth X, a series of Venture Science Master Fund I, LLC)"
+0002050947,0002050947-26-000002,vehicle_type,blind_pool,hand label 2026-10-20 (AFL INVESTMENTS LLC)
+0002105287,,vehicle_type,spv,"Benchmark AI Infrastructure Fund, L.P.: Cerebras-only vehicle (TechCrunch, Feb 2026), sibling of Fund B"
