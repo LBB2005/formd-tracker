@@ -212,9 +212,30 @@ selling equity or a SAFE/convertible (SAFEs usually appear as "option" or "other
   (Investment in X)").
 - `spv` also covers deal-by-deal series: a manager that files 4+ distinct fund numbers
   within 12 months ("HCM G I" to "HCM G XX") isn't raising 20 funds.
+- `spv` also covers code families: 3+ vehicles whose names differ only by a short code,
+  either a hyphenated prefix ("AL-D" / "CO-B" / "GW-E Ribbit Opportunity V, LLC") or, for
+  LLCs, a trailing token ("FundersClub 6XV LLC", "Center15 Capital E LLC"). This beats a
+  fund number. Roman numerals, vintage years, quarter classes ("Fund 8Q") and generic
+  remainders ("ALF-III Capital Partners") don't count as codes.
 - `blind_pool`: a fund number ("Accel XIV", "Partners Four"), or a fund word or vintage
-  year ("Fund", "Opportunity", "Seed", "2023").
+  year ("Fund", "Opportunity", "Seed", "2023"), or an AngelList rolling-fund quarterly
+  class ("Ravikant Capital, LP - G2").
+- `blind_pool` also covers an LP named like a manager, with nothing after "Capital",
+  "Ventures" or "Partners" ("Indus Valley Capital, LP"). SPVs are mostly LLCs or carry a
+  deal word.
 - `unclear`: everything else; these go to review.
+
+*Vehicle rules, 2026-10-21.* On the 35 hand-labelled funds, the code-family, rolling-fund
+and manager-named-LP rules lift SPV vs blind pool from 17 to 20 correct (49% to 57%; 21
+if "CO-B Ribbit Opportunity V" is relabelled SPV like its "AL-D" sibling). With n = 35 that
+is indicative, not a measured rate. On all cached 2019–2025 fund filings they move about
+1,250 rolling-fund classes and 1,370 LPs from `unclear` to `blind_pool`, and about 570
+code-family vehicles to `spv` (160 of them from `blind_pool`). Rules tried and dropped:
+a "Fund" word inside a platform series ("Embedding VC Palm Springs Fund, a series of
+Decile SPV") would have flipped about 20,000 AngelList deal SPVs ("JU Fund I, a series of
+Unpopular VC"); a bare "Series N" is still SPV because most such names are per-deal
+series (EquityZen, AQR); offering duration and investor counts didn't separate the
+labelled SPVs from blind pools. Those labelled exceptions stay in `manual_overrides.csv`.
 
 Nationally, 57% of new "Venture Capital Fund" filings since 2019 are named as SPVs or
 series vehicles. In SF/LA the share is about 27%, because the big SPV platforms

@@ -50,8 +50,8 @@ A "raise" is one Form D offering: the original filing plus all its amendments. A
 ## Startups vs funds
 
 A filing is a **fund** if the issuer picked "Pooled Investment Fund", ticked pooled-fund interests, claimed an Investment Company Act 3(c) exclusion, or has a vehicle name ("a Series of", "SPV", "Syndicate", "Co-Invest"). Funds are then split by name:
-- **SPV**: series, syndicate or single-deal names, plus managers filing four or more numbered vehicles within 12 months (a deal-by-deal series, not 20 funds).
-- **Blind-pool fund**: a fund number or a fund word.
+- **SPV**: series, syndicate or single-deal names, plus managers filing four or more numbered vehicles within 12 months (a deal-by-deal series, not 20 funds), plus three or more vehicles whose names differ only by a short code ("AL-D" / "CO-B" / "GW-E Ribbit Opportunity V", "FundersClub 6XV"), one per portfolio company.
+- **Blind-pool fund**: a fund number or a fund word, an AngelList rolling fund's quarterly class ("Ravikant Capital, LP - G2"), or a limited partnership named only like a manager ("Indus Valley Capital, LP").
 - **Unclear**: everything else, left for review.
 
 Parallel vehicles ("Fund I" and "Fund I-A") are counted once. An **emerging manager** is one raising Fund I–III (our cut-off).
