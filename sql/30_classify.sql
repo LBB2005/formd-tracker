@@ -64,7 +64,8 @@ vehicles as (
         regexp_matches(issuer_name,
             '(?i)(\bparallel\b|\bfeeder\b|offshore|cayman|\baiv\b|\bannex\b|side[- ]?car|'
             '\bqp\b|entrepreneurs fund|\baffiliates\b|\bassociates\b|[ivx]+-[a-d]\b|\b[ivx]+[a-d]\b)')
-            as is_parallel
+            as is_parallel,
+        case when kind = 'fund' then vehicle_code(issuer_name, entity_type) end as vehicle_code
     from kinded
 )
 select *,
@@ -77,6 +78,13 @@ select *,
           or regexp_matches(issuer_name,
                 '(?i)(\bfund\b|opportunit|vintage|early stage|\bseed\b|\bgrowth\b|\b(19|20)\d\d\b)')
             then 'blind_pool'
+        -- AngelList rolling funds file one class per quarter: "Ravikant Capital, LP - G2".
+        when regexp_matches(issuer_name, '\b(LP|L\.P\.)\s*-\s*[A-Z]\d(\s+QP)?$') then 'blind_pool'
+        -- An LP named like a manager ("Indus Valley Capital, LP"). SPVs are mostly LLCs or
+        -- carry a deal word; an LP with anything after the manager words stays unclear.
+        when entity_type = 'Limited Partnership'
+         and regexp_matches(issuer_name, '(?i)\b(capital|ventures?|partners),?\s+(lp|l\.p\.)$')
+            then 'blind_pool'
         else 'unclear'
     end as vehicle_type,
     case
@@ -87,6 +95,11 @@ select *,
         when regexp_matches(issuer_name,
                 '(?i)(\bfund\b|opportunit|vintage|early stage|\bseed\b|\bgrowth\b|\b(19|20)\d\d\b)')
             then 'name: fund word or vintage year'
+        when regexp_matches(issuer_name, '\b(LP|L\.P\.)\s*-\s*[A-Z]\d(\s+QP)?$')
+            then 'name: rolling-fund quarterly class'
+        when entity_type = 'Limited Partnership'
+         and regexp_matches(issuer_name, '(?i)\b(capital|ventures?|partners),?\s+(lp|l\.p\.)$')
+            then 'structure: LP named like a manager'
         else 'no name signal'
     end as vehicle_reason,
     case when kind = 'fund' then
@@ -98,9 +111,18 @@ select *,
 from vehicles;
 
 -- Deal-by-deal series ("HCM G I" ... "HCM G XX") look like numbered funds. No manager
--- raises four distinct numbered funds within 12 months, so those become SPVs.
+-- raises four distinct numbered funds within 12 months, so those become SPVs. Likewise,
+-- three or more vehicles whose names differ only by a short code ("AL-D" / "CO-B" / "GW-E
+-- Ribbit Opportunity V, LLC") are one vehicle per deal, whatever the fund number says.
 create or replace table offering_class as
-with numbered as (
+with code_families as (
+    select struct_extract(vehicle_code, 'family') as family
+    from _class
+    where vehicle_code is not null
+    group by 1
+    having count(distinct struct_extract(vehicle_code, 'code')) >= 3
+),
+numbered as (
     select offering_id, manager_key, fund_number, first_filed
     from _class
     where vehicle_type = 'blind_pool' and fund_number is not null
@@ -113,14 +135,18 @@ series_rate as (
      and b.first_filed between a.first_filed - interval 365 day and a.first_filed + interval 365 day
     group by a.offering_id
 )
-select c.* replace (
-        case when r.numbers_in_year >= 4 then 'spv' else c.vehicle_type end as vehicle_type,
+select c.* exclude (vehicle_code) replace (
+        case when r.numbers_in_year >= 4 or f.family is not null then 'spv'
+             else c.vehicle_type end as vehicle_type,
         case when r.numbers_in_year >= 4
-             then 'manager: 4+ numbered vehicles within 12 months (deal series)'
+                 then 'manager: 4+ numbered vehicles within 12 months (deal series)'
+             when f.family is not null and c.vehicle_type <> 'spv'
+                 then 'manager: 3+ vehicles that differ only by a code (one per deal)'
              else c.vehicle_reason end as vehicle_reason),
        []::varchar[] as overridden_fields
 from _class c
-left join series_rate r using (offering_id);
+left join series_rate r using (offering_id)
+left join code_families f on f.family = struct_extract(c.vehicle_code, 'family');
 
 -- Unclear vehicles named "<known manager> <extra words>" are often SPVs ("Mucker T2",
 -- "Draper Associates Venus") but not reliably ("GGV Capital Holdings" is a GP entity), so

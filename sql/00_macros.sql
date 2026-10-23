@@ -93,6 +93,34 @@ create or replace macro is_generic_stem(s) as
         '((capital|ventures?|partners|vc|management|investments?|group|holdings|equity|'
         'growth|opportunit\w*|global|private|venture|and|of|us|america|american|real|estate)\s*)+');
 
+-- A short code that tells apart a manager's otherwise identical vehicle names, usually one
+-- per portfolio company: "AL-D Ribbit Opportunity V, LLC", "FundersClub 6XV LLC". Returns
+-- {code, family}, family being the cleaned name without the code; a generic remainder
+-- ("ALF-III Capital Partners, LLC") or a platform series doesn't count. Roman numerals ("MVP LS
+-- Fund CIII"), 1-2 digit numbers, vintage years and quarter classes ("Fund 8Q") belong to
+-- funds, not deals. A trailing token counts only for LLCs: LP series such as "HCM S9Aii LP"
+-- were hand-labelled as funds. Rolling-fund classes ("Ravikant Capital, LP - G2") are not
+-- codes either; see 30_classify.sql.
+create or replace macro vehicle_code(n, entity) as (
+    with m as (
+        select coalesce(
+            case when regexp_matches(n, '^[A-Z0-9]{1,5}-[A-Z0-9]{1,5}\s+\S')
+                 then [regexp_extract(n, '^([A-Z0-9]{1,5}-[A-Z0-9]{1,5})\s', 1),
+                       regexp_replace(n, '^[A-Z0-9]{1,5}-[A-Z0-9]{1,5}\s+', '')] end,
+            case when entity = 'Limited Liability Company'
+                  and regexp_matches(n, '\S\s+[A-Z0-9]{1,4},?\s+(LLC|L\.L\.C\.)$')
+                 then [regexp_extract(n, '\s([A-Z0-9]{1,4}),?\s+(LLC|L\.L\.C\.)$', 1),
+                       regexp_replace(n, '\s[A-Z0-9]{1,4}(,?\s+(LLC|L\.L\.C\.))$', '\1')] end
+        ) as cf
+    )
+    select case when cf is not null
+                     and not regexp_full_match(cf[1], '[IVXLCDM]+|\d{1,2}|(19|20)\d\d|\d{1,2}Q')
+                     and not regexp_matches(lower(cf[2]), 'a series of')
+                     and not is_generic_stem(manager_stem(cf[2]))
+                then {'code': cf[1], 'family': clean_name(cf[2])} end
+    from m
+);
+
 -- The SEC's TSVs wrap some text values in quotes and double the inner ones:
 -- "The actual name is ""All Weather, Ltd.""" -> The actual name is "All Weather, Ltd."
 create or replace macro unquote(s) as

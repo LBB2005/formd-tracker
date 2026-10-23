@@ -141,6 +141,78 @@ def test_numbered_deal_series_become_spvs():
     assert got["accel"][1] == "blind_pool"
 
 
+LLC, LP = "Limited Liability Company", "Limited Partnership"
+
+
+@pytest.mark.parametrize("name, entity, code, family", [
+    ("AL-D Ribbit Opportunity V, LLC", LLC, "AL-D", "ribbit opportunity v llc"),
+    ("FundersClub 6XV LLC", LLC, "6XV", "fundersclub llc"),
+    ("Center15 Capital E LLC", LLC, "E", "center15 capital llc"),
+    ("HCM S9Aii LP", LP, None, None),                      # trailing token: LLCs only
+    ("Ravikant Capital, LP - G2", LP, None, None),          # rolling-fund class
+    ("LINK Fund II LLC", LLC, None, None),                  # fund number
+    ("AV Opportunity Fund 2024, LLC", LLC, None, None),     # vintage year
+    ("Purple Arch Ventures Fund 8Q, LLC", LLC, None, None),  # quarter class
+    ("ALF-III Capital Partners, LLC", LLC, None, None),     # generic remainder
+])
+def test_vehicle_code(name, entity, code, family):
+    got = macros().execute("select vehicle_code(?, ?)", [name, entity]).fetchone()[0]
+    assert got == (None if code is None else {"code": code, "family": family})
+
+
+def vehicle_calls(rows):
+    con = classify(rows)
+    return {oid: (vt, why) for oid, vt, why in
+            con.execute("select offering_id, vehicle_type, vehicle_reason from offering_class").fetchall()}
+
+
+def test_vehicles_that_differ_only_by_a_code_are_spvs():
+    rows = [vc(f"rib{c}", f"{c} Ribbit Opportunity V, LLC", cik=f"R{c}", entity_type=LLC)
+            for c in ["AL-D", "CO-B", "GW-E"]]
+    rows += [vc(f"fc{c}", f"FundersClub {c} LLC", cik=f"F{c}", entity_type=LLC)
+             for c in ["6XV", "2YK", "D6H"]]
+    rows += [vc(f"hcm{c}", f"HCM {c} LP", cik=f"H{c}", entity_type=LP)
+             for c in ["S9Ai", "S9Aii", "S10A"]]
+    rows += [vc("cal", "Calibrate Ventures NH, LLC", entity_type=LLC),
+             vc("ribx", "Ribbit Capital X, L.P.", entity_type=LP)]
+    got = vehicle_calls(rows)
+    for oid in ["ribAL-D", "ribCO-B", "ribGW-E", "fc6XV", "fc2YK", "fcD6H"]:
+        assert got[oid] == ("spv", "manager: 3+ vehicles that differ only by a code (one per deal)")
+    assert {got[f"hcm{c}"][0] for c in ["S9Ai", "S9Aii", "S10A"]} == {"unclear"}
+    assert got["cal"][0] == "unclear"      # one coded vehicle is not a family
+    assert got["ribx"][0] == "blind_pool"  # the manager's main fund
+
+
+def test_rolling_funds_and_manager_named_lps_are_blind_pools():
+    got = vehicle_calls([
+        vc("roll", "Ravikant Capital, LP - G2", entity_type=LP),
+        vc("rollqp", "MCJ Collective QP, LP - B1", entity_type=LP),
+        vc("indus", "Indus Valley Capital, LP", entity_type=LP),
+        vc("llc", "Indus Valley Capital, LLC", entity_type=LLC),
+        vc("deal", "MAV Neuralink, LP", entity_type=LP),
+        vc("paren", "Castle Peak Partners (Lark), LP", entity_type=LP),
+    ])
+    assert got["roll"] == got["rollqp"] == ("blind_pool", "name: rolling-fund quarterly class")
+    assert got["indus"] == ("blind_pool", "structure: LP named like a manager")
+    # Only a name that ends in the manager words counts.
+    assert got["llc"][0] == got["deal"][0] == got["paren"][0] == "unclear"
+
+
+def test_reviewer_settled_vehicle_patterns():
+    # Hand-labelled on 2026-10-20: SPV words win even on large raises; "Series" inside a
+    # fund's own name and parallel vehicles of numbered funds stay blind pools.
+    got = vehicle_calls([
+        vc("b1", "224 Ventures SPV Series LP, Series B1", entity_type=LP),
+        vc("port", "Portfolia 2026 SPV 6 LLC", entity_type=LLC),
+        vc("annual", "Wilshire Private Equity Annual Fund Series, L.P.", entity_type=LP),
+        vc("del", "WA Crown City CLO Fund I (Delaware), LP", entity_type=LP),
+        vc("feeder", "Alpine Space Ventures Fund II Feeder, L.P.", entity_type=LP),
+    ])
+    assert {k: v[0] for k, v in got.items()} == {
+        "b1": "spv", "port": "spv", "annual": "blind_pool", "del": "blind_pool",
+        "feeder": "blind_pool"}
+
+
 def test_parallel_vehicles_form_one_family_and_emerging_is_fund_i_to_iii():
     con = classify([
         vc("a1", "Goodfinch Fund I, LP", cik="G1", filed=date(2020, 1, 1)),
