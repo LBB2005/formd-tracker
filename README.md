@@ -337,7 +337,7 @@ Classification checks fail the build if any offering lacks a `kind`, or any fund
 - [x] **Week 4:** dashboard (`site/`), map, coverage-gap study, downloads, daily GitHub Actions refresh
 - [x] Published: https://lbb2005.github.io/formd-tracker/ (homepage AI checks cover 89–97% of
   startups in every metro)
-- [ ] **You:** the "so what" lines in your own voice
+- [x] Findings page (`site/src/findings.md`): the four takeaways, figures as of October 2026
 
 **Why not Evidence.dev:** the plan named Evidence, but its open-source build is deprecated.
 The template now prints "npm run build is deprecated" and points to the hosted Evidence

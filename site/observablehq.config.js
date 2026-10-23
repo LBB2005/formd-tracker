@@ -5,6 +5,7 @@ export default {
   root: "src",
   style: "style.css",
   pages: [
+    {name: "Findings", path: "/findings"},
     {name: "AI raises", path: "/ai-raises"},
     {name: "Company lookup", path: "/company"},
     {name: "New funds", path: "/funds"},
