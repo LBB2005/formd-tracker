@@ -237,10 +237,18 @@ Unpopular VC"); a bare "Series N" is still SPV because most such names are per-d
 series (EquityZen, AQR); offering duration and investor counts didn't separate the
 labelled SPVs from blind pools. Those labelled exceptions stay in `manual_overrides.csv`.
 
-Nationally, 57% of new "Venture Capital Fund" filings since 2019 are named as SPVs or
-series vehicles. In SF/LA the share is about 27%, because the big SPV platforms
+Nationally, 67% of new "Venture Capital Fund" filings since 2019 are named as SPVs or
+series vehicles. In SF/LA the share is about 29%, because the big SPV platforms
 (AngelList-style series LLCs) file from Delaware addresses and fall outside both metros.
-Counting raw VC filings would still overstate new SF/LA funds by about 1.6x.
+Counting raw VC filings would still overstate new SF/LA funds by 1.4x–1.6x (3.0x–3.5x
+nationally).
+
+*Accuracy, 2026-10-22.* With the hand overrides switched off, the rules alone get 20 of
+the 35 labelled funds right. Of the 12 misses among rule-funds, 5 call a blind pool an SPV
+and 2 the reverse, and 4 of the 5 left `unclear` are blind pools. So the site reports the
+overcount as a range: the low end counts `unclear` vehicles as funds, the high end doesn't,
+and the truth is likely nearer the low end. Further name rules weren't added: at n = 35 they
+would be fitted to the sample.
 
 **Managers and emerging managers.** `manager_key` is the fund name up to its fund number,
 minus vehicle words. For example, "Andreessen Horowitz Fund IX – AI Infrastructure, L.P."
@@ -283,10 +291,10 @@ capital_momentum and ai_signals.
 - A query on the BigQuery copy reconciles exactly with DuckDB: 285,868 offerings and
   $26,526,160,695,836 sold.
 
-The current target is project `YOUR_PROJECT`, dataset `formd`. That project
-has no billing, so it runs in the free BigQuery sandbox, where tables expire 60 days after
-each load. Run the command at least every two months, or turn on the optional step in the
-weekly workflow, to keep them live.
+The target is the project in the `BQ_PROJECT` repository variable (shown as `YOUR_PROJECT`
+below), dataset `formd`. That project has no billing, so it runs in the free BigQuery
+sandbox, where tables expire 60 days after each load. The daily workflow reloads them, so
+they stay live as long as it runs.
 
 ```sql
 -- example: AI share of SF startup raises by year
@@ -322,12 +330,14 @@ Classification checks fail the build if any offering lacks a `kind`, or any fund
 - [x] **Week 1:** download, load, filings → offerings, data checks
 - [x] Week 1 gate, automated: `pipeline.verify_edgar` compares the spot-check companies with EDGAR
 - [x] **Week 2:** EDGAR filings since the latest quarter; fund vs startup, SPV, managers, emerging managers
-- [ ] **Week 2 gate (you):** review `review/classification_sample.csv` (100 rows), then `pipeline.review score`
+- [x] **Week 2 gate:** 47 classification rows reviewed (fund vs company 91% right; SPV vs
+  blind pool 20/35 by rules alone, reported as a range on the site)
 - [x] **Week 3:** AI tagging in four layers (name, YC directory, homepage text, quote-verified model tie-break)
-- [ ] **Week 3 gate (you):** label `review/ai_label_sample.csv` (400 rows), then `pipeline.review ai-score`
-- [x] **Week 4:** dashboard (`site/`), map, coverage-gap study, downloads, weekly GitHub Actions refresh
-- [ ] **Week 4 (you):** write the "so what" lines in your own voice; publish (create the repo, add the
-  `SEC_USER_AGENT` secret, set Pages to GitHub Actions)
+- [x] **Week 3 gate:** 205 AI items labelled (precision 83%, weighted recall 66%)
+- [x] **Week 4:** dashboard (`site/`), map, coverage-gap study, downloads, daily GitHub Actions refresh
+- [x] Published: https://lbb2005.github.io/formd-tracker/ (homepage AI checks cover 89–97% of
+  startups in every metro)
+- [ ] **You:** the "so what" lines in your own voice
 
 **Why not Evidence.dev:** the plan named Evidence, but its open-source build is deprecated.
 The template now prints "npm run build is deprecated" and points to the hosted Evidence
@@ -420,13 +430,14 @@ sample (`pipeline.review ai-sample`); the Methodology page shows them once label
   company as it is now, so a company that pivoted to AI in 2024 also counts as AI for its
   2019 raise. `ai_name_at_filing` is the time-correct alternative: AI in the issuer name
   as filed on that raise. In SF, startup raises by AI-named companies went from 1.2% (2019)
-  to 10.4% (2026). By current evidence the share went from 18.6% to 36.5%. Show both; the
+  to 10.4% (2026). By current evidence the share went from 18.3% to 36.7%. Show both; the
   truth sits between them.
 
-- **One issuer drives AI dollars.** xAI's four filings ($33B since 2024) account for most
-  SF AI dollars. AI's dollar share is 39% in 2024 and 65% in 2026 with xAI, and in the
-  single digits without it. Every AI-share chart should show both views, plus counts
-  and medians.
+- **One issuer skews AI dollars.** xAI is 40% of all SF startup dollars in 2026 ($16.6B
+  of $41B). AI's dollar share is 75% with xAI and 58% without it. Before the homepage
+  checks covered most companies, the share without xAI looked like single digits; with
+  them, AI money is broad (Databricks, Baseten, Harvey and others). Every AI-share chart
+  should still show both views, plus counts and medians.
 - **Fund targets cluster on round numbers.** $50M is the most common VC fund target, and
   the median lands on it every year. A third of new funds state "Indefinite". Report
   quartiles and the share left indefinite. Parallel vehicles often repeat the whole fund's

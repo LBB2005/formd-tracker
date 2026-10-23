@@ -61,9 +61,11 @@ A **startup raise** is an operating company selling equity or a SAFE/convertible
 ```js
 display(html`<table><thead><tr><th>Hand check of these calls</th><th>Result</th></tr></thead><tbody>
   <tr><td>Fund vs company (${num(cls.length)} reviewed rows)</td><td>${cls.length ? pct(clsKind / cls.length) + " correct" : "pending: review/classification_sample.csv"}</td></tr>
-  <tr><td>SPV vs blind-pool, among funds (${num(clsFunds.length)})</td><td>${clsFunds.length ? pct(clsVeh / clsFunds.length) + " correct" : "pending"}</td></tr>
+  <tr><td>SPV vs blind-pool, among funds (${num(clsFunds.length)})</td><td>${clsFunds.length ? pct(clsVeh / clsFunds.length) + " correct with the rules as first sampled" : "pending"}</td></tr>
 </tbody></table>`)
 ```
+
+SPV vs blind pool is the weakest call here. After the October 2026 rule update, the rules alone get 20 of these 35 funds right (57%). Their misses lean toward calling a blind-pool fund an SPV, and 4 of the 5 left "unclear" were blind pools. With 35 funds that is indicative rather than a measured rate, so the Funds page reports the SPV overcount as a range. Every hand-checked fund is corrected in the data.
 
 **Fund managers and Form ADV.** A manager's vehicles are grouped by name stem: the fund name up to its fund number, with platform SPVs grouped under the platform. Managers are then matched by name to the SEC's monthly Form ADV adviser files, which add whether the adviser claims the venture-capital fund exemption, how many private funds it reports, their gross assets, and when it began reporting to the SEC.
 

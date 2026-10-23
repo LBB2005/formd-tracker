@@ -73,7 +73,9 @@ const lastY = yearly.at(-2) ?? yearly.at(-1);
 
 ### How much of the "new VC fund" wave is really SPVs?
 
-<p class="answer">${`Since 2019, ${num(sumv(vehicles, "spv"))} of ${num(sumv(vehicles, "spv") + sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear"))} new venture vehicles ${scope.phrase(metroChoice)} were SPVs or series vehicles. Counting raw filings would overstate new funds by about ${((sumv(vehicles, "spv") + sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear")) / sumv(vehicles, "blind_pool")).toFixed(1)}x.`}</p>
+<p class="answer">${`Since 2019, ${num(sumv(vehicles, "spv"))} of ${num(sumv(vehicles, "spv") + sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear"))} new venture vehicles ${scope.phrase(metroChoice)} were SPVs or series vehicles. Counting raw filings would overstate new funds by about ${((sumv(vehicles, "spv") + sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear")) / (sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear"))).toFixed(1)}x to ${((sumv(vehicles, "spv") + sumv(vehicles, "blind_pool") + sumv(vehicles, "unclear")) / sumv(vehicles, "blind_pool")).toFixed(1)}x.`}</p>
+
+<p class="fineprint" style="color:var(--ink-muted);font-size:0.8rem">The vehicle rules read fund names, and names are ambiguous. On hand-checked funds the rules alone sorted SPV vs blind pool correctly about 57% of the time, leaning toward calling a fund an SPV, and most "unclear" vehicles turned out to be blind pools. So the low end counts unclear vehicles as funds, and the true overcount is likely nearer it. See <a href="./methodology">Methodology</a>.</p>
 
 ${key([["Blind-pool funds", C.s1], ["SPVs and series vehicles", C.s2], ["Unclear (in review)", C.neutral]])}
 
