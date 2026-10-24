@@ -123,8 +123,10 @@ jobs:
         if: ${{ vars.GCP_WIF_PROVIDER != '' }}
         uses: google-github-actions/setup-gcloud@v2
 
+      # A Google auth timeout shouldn't block the site; the next run replaces every table.
       - name: Load BigQuery
         if: ${{ vars.GCP_WIF_PROVIDER != '' }}
+        continue-on-error: true
         env:
           BQ_PROJECT: ${{ vars.BQ_PROJECT }}
           BQ_DATASET: ${{ vars.BQ_DATASET || 'formd' }}
