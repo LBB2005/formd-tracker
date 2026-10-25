@@ -72,8 +72,10 @@ create or replace macro manager_stem(n) as (
         end as b
     ),
     protected as (
-        -- Prefix a leading number with 'n' so it survives the number-stripping below.
-        select regexp_replace(clean_name(b), '^(\d+)\b', 'n\1') as c from base
+        -- Prefix a leading number with 'N' so it survives the number-stripping below.
+        -- clean_name() output is lowercase, so the uppercase marker can't collide with a
+        -- name that really starts with "n" plus a digit ("n2 Venture Capital", "N49P").
+        select regexp_replace(clean_name(b), '^(\d+)\b', 'N\1') as c from base
     ),
     cut as (
         select coalesce(nullif(regexp_extract(c,
@@ -83,7 +85,7 @@ create or replace macro manager_stem(n) as (
         from protected
     )
     select regexp_replace(trim(regexp_replace(regexp_replace(c, vehicle_words(), ' ', 'g'),
-                                              '\s+', ' ', 'g')), '^n(\d)', '\1')
+                                              '\s+', ' ', 'g')), '^N(\d)', '\1')
     from cut
 );
 

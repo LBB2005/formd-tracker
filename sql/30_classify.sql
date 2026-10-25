@@ -14,7 +14,18 @@ with base as (
             '(?i)(a series of|\bspv\d*\b|syndicat|co-?invest|\(investment in|\bspecial purpose|'
             '\s-\s.*\bseries$|'
             '\bseries \d+\b|\bseries [a-z0-9]*\d[a-z0-9]*\b|(llc|lp|l\.p\.),?\s*-?\s*series\b)')
-            as vehicle_name
+            as vehicle_name,
+        -- A partnership, LLC or trust with "Fund" as a word in its name pools investors'
+        -- money even when filed under "Other" ("Hyla Fund III, LLC", "TR3 Capital Fund VI
+        -- LLC"). Corporations are left out: "Ember Fund Inc" and "HazelTree Fund Services,
+        -- Inc." are startups. So are management companies ("Meta4 Fund Management, LLC").
+        o.entity_type <> 'Corporation'
+            and regexp_matches(o.issuer_name, '(?i)\bfund\b')
+            and not regexp_matches(o.issuer_name, '(?i)\b(inc|corp|corporation|incorporated)\.?$')
+            and not regexp_matches(o.issuer_name,
+                '(?i)\bfund\s+(manager|management|advisors?|advisers?|services|solutions|'
+                'admin\w*|technolog\w*|software)\b')
+            as fund_named
     from offerings o
     join filings f on f.accession = o.latest_accession
     join issuers i on i.cik = o.cik
@@ -31,6 +42,12 @@ kinded as (
             -- Fintech startups sometimes pick "Investing" (FalconX, Snowball Finance).
             when industry_group = 'Investing' and entity_type = 'Corporation' then 'operating_company'
             when industry_group = 'Investing' then 'other_investing'
+            -- Oil, gas and energy "funds" are drilling, royalty or project programs
+            -- ("USEDC 2024 B Drilling Fund LP", "Main Street Solar Fund II, LLC").
+            when fund_named and industry_group in ('Oil and Gas', 'Coal Mining', 'Other Energy',
+                                                   'Electric Utilities', 'Energy Conservation')
+                then 'other_investing'
+            when fund_named then 'fund'
             else 'operating_company'
         end as kind,
         case
@@ -38,6 +55,10 @@ kinded as (
             when is_pooled_fund then 'pooled_interest_flag'
             when has_3c then '3c_exemption'
             when vehicle_name then 'vehicle_name'
+            when industry_group in ('Commercial', 'Residential', 'Other Real Estate',
+                                    'REITS and Finance', 'Construction', 'Investing')
+                then 'industry_group'
+            when fund_named then 'name: fund word (not a corporation)'
             else 'industry_group'
         end as kind_reason,
         -- What the operating company sold. SAFEs are usually filed as "option" or "other".
@@ -135,7 +156,7 @@ series_rate as (
      and b.first_filed between a.first_filed - interval 365 day and a.first_filed + interval 365 day
     group by a.offering_id
 )
-select c.* exclude (vehicle_code) replace (
+select c.* exclude (vehicle_code, fund_named) replace (
         case when r.numbers_in_year >= 4 or f.family is not null then 'spv'
              else c.vehicle_type end as vehicle_type,
         case when r.numbers_in_year >= 4
@@ -170,6 +191,12 @@ join (select distinct manager_key from offering_class
 update offering_class
 set vehicle_reason = 'no name signal; known manager + extra words (often an SPV)'
 where offering_id in (select offering_id from _known_prefix);
+
+-- What the rules alone say, kept when hand overrides below change kind or vehicle_type,
+-- so the hand-labelled review sample can be scored against today's rules.
+alter table offering_class add column rule_kind varchar;
+alter table offering_class add column rule_vehicle_type varchar;
+update offering_class set rule_kind = kind, rule_vehicle_type = vehicle_type;
 
 -- Hand corrections. An offering-specific row beats a CIK-wide row for the same field.
 create or replace temp table _ov as
@@ -258,10 +285,13 @@ alter table offerings add column if not exists manager_key varchar;
 alter table offerings add column if not exists security_class varchar;
 alter table offerings add column if not exists is_startup_raise boolean;
 alter table offerings add column if not exists overridden_fields varchar[];
+alter table offerings add column if not exists rule_kind varchar;
+alter table offerings add column if not exists rule_vehicle_type varchar;
 update offerings set
     kind = c.kind, vehicle_type = c.vehicle_type, fund_bucket = c.fund_bucket,
     fund_number = c.fund_number, manager_key = c.manager_key,
     security_class = c.security_class, is_startup_raise = c.is_startup_raise,
-    overridden_fields = c.overridden_fields
+    overridden_fields = c.overridden_fields,
+    rule_kind = c.rule_kind, rule_vehicle_type = c.rule_vehicle_type
 from offering_class c
 where c.offering_id = offerings.offering_id;

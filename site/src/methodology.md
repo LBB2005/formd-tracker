@@ -10,11 +10,21 @@ const reviews = FileAttachment("data/reviews.json").json();
 
 ```js
 // Hand-review scores, computed from the labelled CSVs in review/ (blank = rule was right).
+// The truth is the hand label, or the sample's own call where the reviewer left it blank. The
+// prediction is what today's rules say before hand overrides (rule_kind / rule_vehicle_type,
+// attached by pipeline/export.py), so the score tracks the rules as they now run.
 const yes = (v) => ["y", "yes"].includes(String(v ?? "").trim().toLowerCase());
-const cls = (reviews.classification_sample ?? []).filter((r) => yes(r.reviewed));
-const clsKind = cls.filter((r) => !r.true_kind?.trim() || r.true_kind.trim() === r.kind).length;
-const clsFunds = cls.filter((r) => (r.true_kind?.trim() || r.kind) === "fund");
-const clsVeh = clsFunds.filter((r) => !r.true_vehicle_type?.trim() || r.true_vehicle_type.trim() === r.vehicle_type).length;
+const cls = (reviews.classification_sample ?? []).filter((r) => yes(r.reviewed) && r.rule_kind != null);
+const trueKind = (r) => r.true_kind?.trim() || r.kind;
+const trueVeh = (r) => r.true_vehicle_type?.trim() || r.vehicle_type;
+const clsKind = cls.filter((r) => trueKind(r) === r.rule_kind).length;
+const clsFunds = cls.filter((r) => trueKind(r) === "fund");
+const clsVeh = clsFunds.filter((r) => trueVeh(r) === r.rule_vehicle_type).length;
+const bpAsSpv = clsFunds.filter((r) => trueVeh(r) === "blind_pool" && r.rule_vehicle_type === "spv").length;
+const spvAsBp = clsFunds.filter((r) => trueVeh(r) === "spv" && r.rule_vehicle_type === "blind_pool").length;
+const leftUnclear = clsFunds.filter((r) => r.rule_vehicle_type === "unclear");
+const unclearBp = leftUnclear.filter((r) => trueVeh(r) === "blind_pool").length;
+const notFund = clsFunds.filter((r) => r.rule_kind !== "fund").length;
 const ai = (reviews.ai_label_sample ?? []).filter((r) => ["ai", "not_ai"].includes(String(r.human_label ?? "").trim()));
 const tp = ai.filter((r) => r.predicted === "ai" && r.human_label.trim() === "ai").length;
 const fp = ai.filter((r) => r.predicted === "ai" && r.human_label.trim() === "not_ai").length;
@@ -49,7 +59,7 @@ A "raise" is one Form D offering: the original filing plus all its amendments. A
 
 ## Startups vs funds
 
-A filing is a **fund** if the issuer picked "Pooled Investment Fund", ticked pooled-fund interests, claimed an Investment Company Act 3(c) exclusion, or has a vehicle name ("a Series of", "SPV", "Syndicate", "Co-Invest"). Funds are then split by name:
+A filing is a **fund** if the issuer picked "Pooled Investment Fund", ticked pooled-fund interests, claimed an Investment Company Act 3(c) exclusion, or has a vehicle name ("a Series of", "SPV", "Syndicate", "Co-Invest"). A partnership, LLC or trust with the word "Fund" in its name ("Hyla Fund III, LLC") is a fund too, whatever industry it picked, except oil, gas and energy programs ("USEDC 2024 B Drilling Fund LP"), which are counted as other investing; corporations named "Fund" keep the other rules, since fintech startups use the word. Funds are then split by name:
 - **SPV**: series, syndicate or single-deal names, plus managers filing four or more numbered vehicles within 12 months (a deal-by-deal series, not 20 funds), plus three or more vehicles whose names differ only by a short code ("AL-D" / "CO-B" / "GW-E Ribbit Opportunity V", "FundersClub 6XV"), one per portfolio company.
 - **Blind-pool fund**: a fund number or a fund word, an AngelList rolling fund's quarterly class ("Ravikant Capital, LP - G2"), or a limited partnership named only like a manager ("Indus Valley Capital, LP").
 - **Unclear**: everything else, left for review.
@@ -61,11 +71,18 @@ A **startup raise** is an operating company selling equity or a SAFE/convertible
 ```js
 display(html`<table><thead><tr><th>Hand check of these calls</th><th>Result</th></tr></thead><tbody>
   <tr><td>Fund vs company (${num(cls.length)} reviewed rows)</td><td>${cls.length ? pct(clsKind / cls.length) + " correct" : "pending: review/classification_sample.csv"}</td></tr>
-  <tr><td>SPV vs blind-pool, among funds (${num(clsFunds.length)})</td><td>${clsFunds.length ? pct(clsVeh / clsFunds.length) + " correct with the rules as first sampled" : "pending"}</td></tr>
+  <tr><td>SPV vs blind-pool, among funds (${num(clsFunds.length)})</td><td>${clsFunds.length ? pct(clsVeh / clsFunds.length) + " correct" : "pending"}</td></tr>
 </tbody></table>`)
 ```
 
-SPV vs blind pool is the weakest call here. After the October 2026 rule update, the rules alone get 20 of these 35 funds right (57%). Their misses lean toward calling a blind-pool fund an SPV, and 4 of the 5 left "unclear" were blind pools. With 35 funds that is indicative rather than a measured rate, so the Funds page reports the SPV overcount as a range. Every hand-checked fund is corrected in the data.
+```js
+display(clsFunds.length ? html`<p>Both rows score today's rules with hand corrections switched off. SPV vs blind pool is the weakest call here: the rules alone get ${num(clsVeh)} of these ${num(clsFunds.length)} funds right (${pct(clsVeh / clsFunds.length)}). ${
+  bpAsSpv > spvAsBp
+    ? `Their misses lean toward calling a blind-pool fund an SPV (${num(bpAsSpv)}, against ${num(spvAsBp)} the other way)`
+    : `They call ${num(bpAsSpv)} blind-pool funds SPVs and ${num(spvAsBp)} SPVs blind pools`}${
+  leftUnclear.length ? `, ${num(unclearBp)} of the ${num(leftUnclear.length)} left "unclear" were blind pools` : ""}${
+  notFund ? `, and ${num(notFund)} ${notFund === 1 ? "was" : "were"} not called a fund at all` : ""}. With ${num(clsFunds.length)} funds that is indicative rather than a measured rate, so the Funds page reports the SPV overcount as a range. Every hand-checked fund is corrected in the data.</p>` : "")
+```
 
 **Fund managers and Form ADV.** A manager's vehicles are grouped by name stem: the fund name up to its fund number, with platform SPVs grouped under the platform. Managers are then matched by name to the SEC's monthly Form ADV adviser files, which add whether the adviser claims the venture-capital fund exemption, how many private funds it reports, their gross assets, and when it began reporting to the SEC.
 
@@ -84,7 +101,7 @@ Form D has no AI field, so evidence comes from four independent sources:
 1. **The company name**, including former names ("AI", ".ai", "Artificial Intelligence", "LLM"…; "Neural" and "Intelligence" count only as weak signals).
 2. **Y Combinator's directory**, where a matched company is tagged with AI categories.
 3. **The company's homepage**, fetched once, politely, with robots.txt respected. AI terms in the title, description or headline count as strong; mentions only in body text count as weak.
-4. **A local language model's yes/no/unclear judgment**, used only for ambiguous homepages.
+4. **Claude's yes/no/unclear judgment**, used only for ambiguous homepages (AI mentioned only in body text). The daily build sends these to Claude (Opus 5.5) through Anthropic's Message Batches API. A "yes" counts only when Claude quotes a phrase that appears verbatim in the homepage text and contains an AI term. Local runs can use a local model through Ollama instead, under the same quote check.
 
 The tier follows from the evidence:
 - **strong**: two sources agree.
@@ -102,7 +119,7 @@ display(html`<table><thead><tr><th>AI tag accuracy on a hand-labelled sample</th
 </tbody></table>`)
 ```
 
-The sample took equal numbers of tagged and untagged companies, so raw recall overstates how many AI companies the tag finds: untagged companies are about four times as numerous, and the few AI companies among them add up. The weighted figures scale each half by its real size. The tag therefore **undercounts AI**: treat AI shares in the charts as a floor.
+The sample took equal numbers of tagged and untagged companies, so raw recall overstates how many AI companies the tag finds: untagged companies are about four times as numerous, and the few AI companies among them add up. The weighted figures scale each half by its real size. The tag therefore **undercounts AI**: treat AI shares in the charts as a floor. Precision and recall were measured on SF Bay Area and Los Angeles companies only, so the tag's accuracy in other metros is unmeasured.
 
 **The tag looks backwards from today.** Homepage, YC and model evidence describe a company as it is now, so a company that pivoted to AI in 2024 also counts as AI for its 2019 raise, which inflates early years. The Overview therefore offers a strict, time-correct alternative: *AI in the company's name as filed on that raise*. It misses most AI companies but can't leak. Treat the two as bounds.
 

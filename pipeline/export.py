@@ -148,10 +148,19 @@ def main() -> None:
                 "group by 1").fetchall()),
         }
 
+        # The classification sample's kind/vehicle_type columns are frozen at the rules of
+        # the day it was drawn; attach what today's rules say (before hand overrides) so the
+        # methodology page grades the current rules.
+        rules = {oid: {"rule_kind": k, "rule_vehicle_type": v} for oid, k, v in con.execute(
+            "select offering_id, rule_kind, rule_vehicle_type from offering_class").fetchall()}
+
     # Hand-review results, when they exist, for the methodology page.
     reviews = {}
     for path in REVIEW.glob("*.csv"):
         rows = list(csv.DictReader(open(path)))
+        if path.stem == "classification_sample":
+            for r in rows:
+                r.update(rules.get(r["offering_id"], {"rule_kind": None, "rule_vehicle_type": None}))
         reviews[path.stem] = rows
     (SITE_DATA / "meta.json").write_text(json.dumps(meta, indent=1, default=str))
     (SITE_DATA / "reviews.json").write_text(json.dumps(reviews, indent=1))
