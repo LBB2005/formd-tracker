@@ -7,7 +7,8 @@ import * as Plot from "npm:@observablehq/plot";
 import {C, usd, pct, num, rows, key, tile, stackedColumns, lines, yearTicks, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
 const db = DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
+  fund_vehicles: FileAttachment("data/fund_vehicles.parquet"),
+  fund_i: FileAttachment("data/fund_i.parquet"),
   fund_families: FileAttachment("data/fund_families.parquet")
 });
 ```
@@ -35,7 +36,7 @@ const vehicles = rows(await db.query(`
          count(*) filter (where vehicle_type = 'blind_pool')::int as blind_pool,
          count(*) filter (where vehicle_type = 'spv')::int as spv,
          count(*) filter (where vehicle_type = 'unclear')::int as unclear
-  from offerings
+  from fund_vehicles
   where kind = 'fund' and fund_bucket = 'venture' and is_new_in_window and ${metroSql}
     and first_filed < date_trunc('quarter', date '${asOf}')
   group by all order by qd`));
@@ -54,7 +55,7 @@ const fundI = rows(await db.query(`
          o.fill_pct::double as fill, o.investors_latest::int as investors, o.n_filings::int as n_filings,
          date_diff('day', coalesce(o.first_sale_date, o.first_filed), o.last_filed)::int as days,
          o.filing_url
-  from offerings o
+  from fund_i o
   where o.kind = 'fund' and o.fund_bucket = 'venture' and o.vehicle_type = 'blind_pool' and o.fund_number = 1
     and o.is_new_in_window and ${metroSql}
   order by o.first_filed desc`));

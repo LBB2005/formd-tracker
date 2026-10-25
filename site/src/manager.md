@@ -5,14 +5,20 @@ title: Fund managers
 ```js
 import {usd, pct, num, rows, tile, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
-const db = DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
-  fund_families: FileAttachment("data/fund_families.parquet"),
-  managers: FileAttachment("data/managers.parquet"),
-  people: FileAttachment("data/people.parquet")
-});
 const key = new URLSearchParams(location.search).get("key");
+// The manager list needs only the managers table; one manager's page also loads its
+// vehicles, fund families and people.
+const db = key ? DuckDBClient.of({
+  managers: FileAttachment("data/managers.parquet"),
+  manager_vehicles: FileAttachment("data/manager_vehicles.parquet"),
+  fund_families: FileAttachment("data/fund_families.parquet"),
+  manager_people: FileAttachment("data/manager_people.parquet")
+}) : DuckDBClient.of({managers: FileAttachment("data/managers.parquet")});
 const esc = (s) => s.replaceAll("'", "''");
+```
+
+```js
+// A separate cell, so meta has resolved (FileAttachment.json() is a promise in its own cell).
 const METRO_LABEL = metroScope(meta).labels;
 ```
 
@@ -50,7 +56,7 @@ if (mgr) {
     select cik, issuer_name, vehicle_type, fund_number::int as fund_number, first_filed::varchar as filed,
            offering_amt::double as target, offering_indefinite, sold_latest::double as sold,
            investors_latest::int as investors, filing_url
-    from offerings where manager_key = '${esc(key)}' and duplicate_of is null order by first_filed`));
+    from manager_vehicles where manager_key = '${esc(key)}' order by first_filed`));
   const fams = rows(await db.query(`
     select fund_family_id, fund_number::int as fund_number, first_filed::varchar as filed, n_vehicles::int as n_vehicles,
            target_amt::double as target, is_emerging, emerging_basis
@@ -59,7 +65,7 @@ if (mgr) {
   const ppl = ciks ? rows(await db.query(`
     select display_name, string_agg(distinct roles, '; ') as roles, count(distinct cik)::int as vehicles,
            bool_or(exec_turned_gp) as exec_turned_gp, bool_or(is_entity) as is_entity
-    from people where cik in (${ciks}) and not is_platform_staff
+    from manager_people where cik in (${ciks}) and not is_platform_staff
     group by display_name order by vehicles desc, display_name limit 60`)) : [];
   display(html`<div class="kicker">Fund manager · ${METRO_LABEL[mgr.metro] ?? ""}</div><h1>${mgr.manager_key}</h1>
     <p class="dek">${num(mgr.n_vehicles)} vehicles since ${mgr.first_vehicle_filed?.slice(0, 4)}: ${num(mgr.n_blind_pool)} blind-pool funds and ${num(mgr.n_spv)} SPVs. Highest fund number seen: ${mgr.fund_number_max ?? "—"}.</p>

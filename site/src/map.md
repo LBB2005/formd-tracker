@@ -7,10 +7,7 @@ toc: false
 import * as L from "npm:leaflet";
 import {usd, num, rows, STAGES, STAGE_LABEL, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
-const db = DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
-  issuers: FileAttachment("data/issuers.parquet")
-});
+const db = DuckDBClient.of({map_points: FileAttachment("data/map_points.parquet")});
 ```
 
 
@@ -36,6 +33,8 @@ const window_ = view(Inputs.select(["Last 12 months", "2025", "2024", "2023", "S
 
 </div>
 
+${scope === "AI startup raises" ? metroScope(meta).aiNotice(metro) : ""}
+
 ```js
 const metroInfo = meta.metros.find((m) => m.label === metro);
 const metroKey = metroInfo.key;
@@ -46,11 +45,11 @@ const scopeSql = scope === "AI startup raises" ? "o.is_startup_raise and o.is_ai
   : "o.kind = 'fund' and o.fund_bucket = 'venture' and o.vehicle_type = 'blind_pool'";
 const points = rows(await db.query(`
   select o.cik, o.issuer_name, o.first_filed::varchar as filed, o.sold_latest::double as sold,
-         coalesce(o.inferred_stage, 'fund') as stage, i.lat::double as lat, i.lon::double as lon,
-         i.city, i.geocode_method, i.ai_tier
-  from offerings o join issuers i using (cik)
+         coalesce(o.inferred_stage, 'fund') as stage, o.lat::double as lat, o.lon::double as lon,
+         o.city, o.geocode_method
+  from map_points o
   where o.metro = '${metroKey}' and o.is_new_in_window and not o.flag_implausible
-    and i.lat is not null and ${scopeSql} and ${periodSql}
+    and o.lat is not null and ${scopeSql} and ${periodSql}
   order by o.sold_latest desc nulls last`));
 ```
 

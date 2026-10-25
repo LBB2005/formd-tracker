@@ -3,12 +3,14 @@
     uv run python -m pipeline.export
 
 site/src/data/   tables the dashboard reads in the browser (DuckDB-WASM): every in-scope
-                 company nationally (US startups with a raise since 2019, venture funds)
+                 company nationally (US startups with a raise since 2019, venture funds),
+                 plus smaller page-specific slices of them (PAGE_TABLES)
 site/src/downloads/  national offerings and issuers as Parquet and gzipped CSV for reuse
 """
 
 import csv
 import json
+import re
 from datetime import datetime, timezone
 
 import duckdb
@@ -93,6 +95,89 @@ TABLES = {
     """,
 }
 
+# Page-specific slices of the tables above, so a page downloads only the rows and columns
+# it reads (DuckDB-WASM loads each attached file whole). Each reads the shared file just
+# written, so values and definitions match it exactly. The shared files stay for the
+# Company lookup page and for reuse.
+PAGE_TABLES = {
+    # Overview: startup raises, the columns the AI-share charts read.
+    "startup_raises": """
+        select cik, issuer_name, metro, first_filed, sold_latest, is_ai, ai_name_at_filing,
+               flag_implausible, is_startup_raise, is_new_in_window
+        from DATA/offerings.parquet
+        where is_startup_raise and is_new_in_window
+    """,
+    # Findings: the same rows for SF Bay Area only, which is all its AI-share card reads.
+    "findings_sf_raises": """
+        select cik, issuer_name, metro, first_filed, sold_latest, is_ai, flag_implausible,
+               is_startup_raise, is_new_in_window
+        from DATA/startup_raises.parquet
+        where metro = 'sf_bay'
+    """,
+    # Raise velocity: timing and fill columns, no names.
+    "velocity": """
+        select metro, first_filed, is_ai, flag_implausible, is_startup_raise, is_new_in_window,
+               days_sale_to_first_filing, days_open, n_amendments, fill_pct, offering_amt,
+               sold_latest
+        from DATA/offerings.parquet
+        where is_startup_raise and is_new_in_window
+    """,
+    # New funds and Findings: new venture vehicles, enough to count SPVs vs blind pools.
+    "fund_vehicles": """
+        select metro, first_filed, kind, fund_bucket, vehicle_type, is_new_in_window
+        from DATA/offerings.parquet
+        where kind = 'fund' and fund_bucket = 'venture' and is_new_in_window
+    """,
+    # New funds: the Fund I table and fill chart.
+    "fund_i": """
+        select offering_id, cik, issuer_name, manager_key, metro, kind, fund_bucket,
+               vehicle_type, fund_number, is_new_in_window, first_sale_date, first_filed,
+               last_filed, offering_amt, sold_latest, fill_pct, investors_latest, n_filings,
+               filing_url
+        from DATA/offerings.parquet
+        where kind = 'fund' and fund_bucket = 'venture' and vehicle_type = 'blind_pool'
+          and fund_number = 1 and is_new_in_window
+    """,
+    # Fund managers (one manager's page): every vehicle with a manager key, re-filed
+    # duplicates counted once.
+    "manager_vehicles": """
+        select manager_key, cik, issuer_name, vehicle_type, fund_number, first_filed,
+               offering_amt, offering_indefinite, sold_latest, investors_latest, filing_url
+        from DATA/offerings.parquet
+        where manager_key is not null and duplicate_of is null
+    """,
+    # Fund managers: people on those vehicles, without platform administrators.
+    "manager_people": """
+        select cik, display_name, roles, is_entity, exec_turned_gp, is_platform_staff
+        from DATA/people.parquet
+        where not is_platform_staff
+          and cik in (select cik from DATA/offerings.parquet where manager_key is not null)
+    """,
+    # Map: raises that can be drawn (tracked metro, geocoded), joined to coordinates.
+    "map_points": """
+        select o.cik, o.issuer_name, o.metro, o.first_filed, o.sold_latest, o.inferred_stage,
+               o.is_startup_raise, o.is_ai, o.kind, o.fund_bucket, o.vehicle_type,
+               o.is_new_in_window, o.flag_implausible, i.lat, i.lon, i.city, i.geocode_method
+        from DATA/offerings.parquet o
+        join DATA/issuers.parquet i using (cik)
+        where o.metro is not null and o.is_new_in_window and not o.flag_implausible
+          and i.lat is not null
+          and (o.is_startup_raise
+               or (o.kind = 'fund' and o.fund_bucket = 'venture' and o.vehicle_type = 'blind_pool'))
+    """,
+    # AI raises: AI-tagged startup raises with the issuer's evidence.
+    "ai_raises": """
+        select o.cik, o.issuer_name, o.metro, o.first_filed, o.sold_latest, o.offering_amt,
+               o.inferred_stage, o.security_class, o.ai_tier, o.n_filings, o.filing_url,
+               o.is_startup_raise, o.is_new_in_window,
+               i.ai_evidence, i.domain, i.yc_batch, i.city
+        from DATA/offerings.parquet o
+        join DATA/issuers.parquet i using (cik)
+        where o.is_startup_raise and o.is_new_in_window
+          and o.ai_tier is not null and o.ai_tier <> 'none'
+    """,
+}
+
 
 def main() -> None:
     SITE_DATA.mkdir(parents=True, exist_ok=True)
@@ -104,6 +189,13 @@ def main() -> None:
                         "(format parquet, compression zstd)")
             n = con.execute(f"select count(*) from '{SITE_DATA / name}.parquet'").fetchone()[0]
             print(f"  data/{name}.parquet  {n:,} rows")
+        for name, query in PAGE_TABLES.items():
+            query = re.sub(r"DATA/(\w+\.parquet)", lambda m: f"'{SITE_DATA / m[1]}'", query)
+            con.execute(f"copy ({query} order by all) to '{SITE_DATA / name}.parquet' "
+                        "(format parquet, compression zstd)")
+            n = con.execute(f"select count(*) from '{SITE_DATA / name}.parquet'").fetchone()[0]
+            kb = (SITE_DATA / f"{name}.parquet").stat().st_size / 1e3
+            print(f"  data/{name}.parquet  {n:,} rows, {kb:,.0f} kB (page slice)")
 
         # National downloads.
         for name, query in {

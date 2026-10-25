@@ -5,7 +5,7 @@ title: Raise velocity
 ```js
 import {C, usd, pct, num, rows, key, tile, lines, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
-const db = DuckDBClient.of({offerings: FileAttachment("data/offerings.parquet")});
+const db = DuckDBClient.of({velocity: FileAttachment("data/velocity.parquet")});
 ```
 
 <div class="kicker">Raise velocity · AI vs everyone else</div>
@@ -36,7 +36,7 @@ const byYear = rows(await db.query(`
     median(sold_latest) filter (where is_ai and sold_latest > 0)::double as ai_size,
     median(sold_latest) filter (where not is_ai and sold_latest > 0)::double as other_size,
     count(*) filter (where is_ai)::int as ai_n, count(*)::int as n
-  from offerings
+  from velocity
   where is_startup_raise and is_new_in_window and not flag_implausible and ${metroSql}
   group by all order by y`));
 const pooled = rows(await db.query(`
@@ -45,11 +45,13 @@ const pooled = rows(await db.query(`
     avg((days_sale_to_first_filing > 15)::int) filter (where days_sale_to_first_filing >= 0)::double as late,
     median(least(fill_pct, 1)) filter (where offering_amt > 0)::double as fill,
     median(sold_latest) filter (where sold_latest > 0)::double as size, count(*)::int as n
-  from offerings where is_startup_raise and is_new_in_window and not flag_implausible and ${metroSql}
+  from velocity where is_startup_raise and is_new_in_window and not flag_implausible and ${metroSql}
     and year(first_filed) >= 2023
   group by is_ai`));
 const ai = pooled.find((d) => d.is_ai) ?? {}, other = pooled.find((d) => !d.is_ai) ?? {};
 ```
+
+${scope.aiNotice(metroChoice)}
 
 <div class="tiles">
   ${tile("Days from first sale to filing, AI", num(ai.lag), `everyone else: ${num(other.lag)} · since 2023`)}

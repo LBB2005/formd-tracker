@@ -7,7 +7,7 @@ toc: false
 import {C, usd, pct, num, rows, key, tile, stackedColumns, lines, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
 const db = DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
+  startup_raises: FileAttachment("data/startup_raises.parquet"),
   fund_families: FileAttachment("data/fund_families.parquet")
 });
 ```
@@ -37,7 +37,7 @@ const asOf = meta.data_through;
 // The largest AI issuer by dollars in this selection (xAI for SF), for the exclusion toggle.
 const top = rows(await db.query(`
   select cik, any_value(issuer_name) as name, sum(sold_latest) as usd
-  from offerings where is_startup_raise and is_new_in_window and ${aiCol} and not flag_implausible and ${metroSql}
+  from startup_raises where is_startup_raise and is_new_in_window and ${aiCol} and not flag_implausible and ${metroSql}
   group by cik order by usd desc limit 1`))[0];
 const exclSql = excludeTop && top ? `and cik <> '${top.cik}'` : "";
 const quarterly = rows(await db.query(`
@@ -47,7 +47,7 @@ const quarterly = rows(await db.query(`
          sum(sold_latest) filter (where not ${aiCol})::double as other_usd,
          count(*) filter (where ${aiCol})::int as ai_n,
          count(*)::int as n
-  from offerings
+  from startup_raises
   where is_startup_raise and is_new_in_window and not flag_implausible and ${metroSql} ${exclSql}
     and first_filed < date_trunc('quarter', date '${asOf}')
   group by all order by qd`)).map((d) => ({...d,
@@ -58,7 +58,7 @@ const ytd = rows(await db.query(`
   select sum(sold_latest) filter (where ${aiCol})::double as ai_usd, sum(sold_latest)::double as all_usd,
          count(*) filter (where ${aiCol})::int as ai_n, count(*)::int as n,
          median(sold_latest) filter (where ${aiCol})::double as ai_median
-  from offerings
+  from startup_raises
   where is_startup_raise and is_new_in_window and not flag_implausible and ${metroSql} ${exclSql}
     and year(first_filed) = ${year}`))[0];
 const funds = rows(await db.query(`
@@ -77,7 +77,7 @@ const prev4 = funds.slice(-8, -4);
 const sum = (a, k) => a.reduce((t, d) => t + d[k], 0);
 ```
 
-${aiCoverage != null && aiCoverage < 0.95 ? html`<p class="notice">Homepage AI checks cover ${pct(aiCoverage)} of startups ${scope.phrase(metroChoice)} so far; the rest are tagged from their names only, so AI shares here are a floor until the nationwide run finishes.</p>` : ""}
+${aiCoverage != null && aiCoverage < 0.95 ? html`<p class="notice">Homepage AI checks cover ${pct(aiCoverage)} of startups ${scope.phrase(metroChoice)} so far; the rest are tagged from their names only, so AI shares here are a floor until the nationwide run finishes.</p>` : ""}${scope.aiNotice(metroChoice)}
 
 <div class="tiles">
   ${tile(`AI startup dollars, ${year} to date`, usd(ytd.ai_usd), `${pct(ytd.ai_usd / ytd.all_usd)} of ${usd(ytd.all_usd)} raised by startups${excludeTop && top ? ` · excl. ${top.name}` : ""}`)}
