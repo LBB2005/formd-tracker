@@ -1,18 +1,19 @@
 [project]
 name = "formd-tracker"
 version = "0.1.0"
-description = "SF and LA private capital tracker built on SEC Form D filings"
+description = "US private capital tracker built on SEC Form D filings, with ten metros up close"
 requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.1",
     "requests>=2.32",
     "pyyaml>=6.0",
     "anthropic>=1.11.0",
-    "typesafe-sdk==0.7.5",
 ]
 
 [dependency-groups]
 dev = ["pytest>=8"]
+# pipeline/jev.py only (an experiment dropped 2026-10-19): uv sync --group jev
+jev = ["typesafe-sdk==0.7.5"]
 
 [tool.uv]
 package = false

@@ -18,7 +18,8 @@ Routes for items you haven't labelled:
                 how often both are wrong together
     auto        confident agreement: the shared answer is taken as the label
 
-Needs TYPESAFE_API_KEY in .env (scripts/set-key.sh writes it).
+Needs TYPESAFE_API_KEY in .env (scripts/set-key.sh writes it), and the TypeSafe SDK, which
+is an optional group since the experiment was dropped (2026-10-19): uv sync --group jev
 """
 
 import argparse
@@ -113,8 +114,19 @@ def load_items() -> list[dict]:
     return items
 
 
+def sdk():
+    """The TypeSafe SDK, imported only when Jev is actually called."""
+    try:
+        import typesafe_sdk
+    except ImportError:
+        raise SystemExit("pipeline.jev needs the TypeSafe SDK, an optional dependency group. "
+                         "Install it with: uv sync --group jev "
+                         "(or run: uv run --group jev python -m pipeline.jev ...)") from None
+    return typesafe_sdk
+
+
 def ask(client, item: dict) -> dict:
-    from typesafe_sdk import Choice
+    Choice = sdk().Choice
     if item["queue"] == "ai":
         state = {k: v for k, v in item["state"].items() if k != "domain"}
         state["homepage"] = homepage(item["state"]["domain"])
@@ -144,7 +156,8 @@ def load_answers() -> dict[str, dict]:
 
 
 def run(queue: str | None, limit: int | None, workers: int, labelled: bool = False) -> None:
-    from typesafe_sdk import TypeSafeClient, TypeSafeError
+    ts = sdk()
+    TypeSafeClient, TypeSafeError = ts.TypeSafeClient, ts.TypeSafeError
     os.environ.setdefault("TYPESAFE_API_KEY", env_key("TYPESAFE_API_KEY") or "")
     done = load_answers()
     todo = [it for it in load_items() if it["id"] not in done and (not queue or it["queue"] == queue)

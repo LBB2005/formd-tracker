@@ -9,12 +9,16 @@ data/enrich/claude_batches.json so a later run (or CI job) collects the results.
 Server-side refusal fallbacks aren't available on the Batches API, so a declined request
 is recorded as "unclear", which leaves the company untagged rather than guessing.
 
+Each run submits at most CLAUDE_MAX_USD (default $10) of estimated batch spend; companies
+over the cap aren't recorded anywhere, so the next run picks them up again.
+
     uv run python -m pipeline.claude_judge                # pending batches and spend so far
     uv run python -m pipeline.ai_tag --pilot 50           # synchronous pilot: measures cost
 """
 
 import argparse
 import json
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -28,6 +32,14 @@ MODEL = "claude-opus-5-5"
 PROMPT_VERSION = "v3-claude-quote"
 STATE = DATA_DIR / "enrich" / "claude_batches.json"
 PRICE_IN, PRICE_OUT = 4.00, 20.00  # $ per million tokens, standard; batches are half
+MAX_USD = 10.0              # per-run cap on estimated batch spend; CLAUDE_MAX_USD overrides
+# Cost estimate before submitting, without the network. Input: ~4 characters per token for
+# the system prompt, schema and message, plus framing. Output: Opus 5.5 always thinks
+# (effort "low" here) and thinking is billed as output, so we assume 1,000 tokens a request
+# against ~100 for the JSON alone; the hard ceiling is max_tokens (4,000).
+CHARS_PER_TOKEN = 4
+OVERHEAD_TOKENS = 300
+EST_OUTPUT_TOKENS = 1000
 AI_TERMS = re.compile(
     r"(?i)\b(a\.?i\.?|artificial intelligence|machine learning|deep learning|neural networks?|"
     r"large language models?|llms?|generative ai|gen ?ai|computer vision|natural language "
@@ -71,6 +83,16 @@ def params(name: str, domain: str, text: str) -> dict:
     }
 
 
+def verbatim(quote: str, text: str) -> bool:
+    """Is quote in text (case and whitespace aside) without splitting a word?
+
+    "AI platform" must not verify against "OpenAI platform".
+    """
+    start = r"(?<!\w)" if quote[0].isalnum() else ""
+    end = r"(?!\w)" if quote[-1].isalnum() else ""
+    return re.search(f"(?i){start}{re.escape(quote)}{end}", " ".join(text.split())) is not None
+
+
 def interpret(raw_text: str | None, sent_text: str, stop_reason: str | None) -> dict:
     """Model output -> answer record, applying the verbatim-quote rule."""
     if stop_reason == "refusal" or not raw_text:
@@ -78,15 +100,46 @@ def interpret(raw_text: str | None, sent_text: str, stop_reason: str | None) -> 
     try:
         out = json.loads(raw_text)
     except ValueError:
+        out = None
+    if not isinstance(out, dict):  # valid JSON that isn't an object would crash collect()
         return {"answer": "unclear", "quote": "", "quote_verified": False, "reason": "bad json"}
-    answer = out.get("answer", "unclear")
+    answer = str(out.get("answer", "")).strip().lower()
+    answer = answer if answer in ("yes", "no", "unclear") else "unclear"
     quote = " ".join(str(out.get("quote", "")).split())
-    verified = bool(quote) and quote.lower() in " ".join(sent_text.split()).lower() \
-        and bool(AI_TERMS.search(quote))
+    verified = bool(quote) and verbatim(quote, sent_text) and bool(AI_TERMS.search(quote))
     if answer == "yes" and not verified:
         answer = "unclear"
     return {"answer": answer, "quote": quote[:300], "quote_verified": verified,
             "reason": str(out.get("reason", ""))[:300]}
+
+
+def max_usd() -> float:
+    """This run's spending cap: CLAUDE_MAX_USD if set, else MAX_USD."""
+    raw = os.environ.get("CLAUDE_MAX_USD", "").strip()
+    try:
+        return float(raw) if raw else MAX_USD
+    except ValueError:
+        raise SystemExit(f"CLAUDE_MAX_USD must be a number of dollars, not {raw!r}") from None
+
+
+def estimate_usd(name: str, domain: str, text: str) -> float:
+    """Estimated batch-price cost of one request (see EST_OUTPUT_TOKENS)."""
+    p = params(name, domain, text)
+    chars = len(p["system"]) + len(json.dumps(SCHEMA)) + sum(len(m["content"]) for m in p["messages"])
+    tokens_in = chars / CHARS_PER_TOKEN + OVERHEAD_TOKENS
+    return 0.5 * (tokens_in * PRICE_IN + EST_OUTPUT_TOKENS * PRICE_OUT) / 1e6
+
+
+def within_cap(items: list[tuple[str, str, str, str]], cap: float) -> tuple[list, float]:
+    """The leading items whose estimated cost fits under cap, and that estimate."""
+    chosen, total = [], 0.0
+    for item in items:
+        cost = estimate_usd(*item[1:])
+        if total + cost > cap:
+            break
+        chosen.append(item)
+        total += cost
+    return chosen, total
 
 
 def _text(message) -> str | None:

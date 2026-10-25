@@ -5,6 +5,7 @@
 #               ANTHROPIC_API_KEY  Claude API key for the AI tie-break judge (optional)
 #   Variables:  BQ_PROJECT, GCP_WIF_PROVIDER, GCP_SA_EMAIL  (BigQuery via keyless
 #               Workload Identity Federation; no Google key is stored anywhere)
+#               CLAUDE_MAX_USD  per-run cap on Claude batch spend (optional, default 10)
 #   Pages:      Build and deployment > Source: GitHub Actions
 #
 # Each run checks new company homepages for up to AI_MINUTES, then saves progress by
@@ -40,15 +41,24 @@ jobs:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       AI_MINUTES: ${{ inputs.ai_minutes || '180' }}
+      # Estimated dollars of Claude batch requests submitted per run (batch prices); the
+      # rest wait for later runs. Set the CLAUDE_MAX_USD repository variable to change it.
+      CLAUDE_MAX_USD: ${{ vars.CLAUDE_MAX_USD || '10' }}
     steps:
+      # The latest main, not the SHA from when the run was queued: a run that waited behind
+      # another must start from the enrichment that run pushed. This job only ever saves to
+      # and deploys from main, so it builds main whichever branch it was dispatched from.
       - id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          ref: main
 
-      - uses: astral-sh/setup-uv@v6
+      # setup-uv no longer publishes major tags (v8+), so pin the immutable release.
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -57,7 +67,7 @@ jobs:
       # Only the expensive-to-refetch SEC/Census/ADV downloads are cached; homepage HTML
       # isn't needed again because ai_checks.parquet records every company checked.
       - name: Restore download cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             data/cache/quarterly
@@ -97,15 +107,33 @@ jobs:
       - name: Tests
         run: uv run pytest -q
 
+      # Each run reads data/enrich from main and writes a superset of it, so if someone else
+      # changed those files meanwhile, neither version can win without dropping the other's
+      # rows. On that conflict this run's progress is skipped with a warning (the next run
+      # redoes it) rather than failing the job. A push race with no conflict just retries.
       - name: Save enrichment progress
         if: ${{ always() && steps.checkout.outcome == 'success' }}
         run: |
           git config user.name "formd-bot"
           git config user.email "formd-bot@users.noreply.github.com"
           git add data/enrich
-          git diff --cached --quiet || git commit -m "Refresh enrichment (run ${{ github.run_id }})"
-          git pull --rebase origin main
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh enrichment (run ${{ github.run_id }})"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main; then
+              git push origin HEAD:main && exit 0
+            elif [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+              git rebase --abort
+              echo "::warning::data/enrich changed on main during this run; this run's enrichment is not saved and the next run redoes it."
+              # Batches submitted this run are paid for but now untracked: list them.
+              lost=$(git diff origin/main HEAD -- data/enrich/claude_batches.json \
+                | grep -o '^+ *"id": "msgbatch_[A-Za-z0-9]*' | grep -o 'msgbatch_[A-Za-z0-9]*' || true)
+              [ -z "$lost" ] || echo "::warning::Claude batches from this run won't be collected: $lost"
+              exit 0
+            fi
+            sleep $((attempt * 15))
+          done
+          echo "::warning::Could not push enrichment progress after 3 attempts; the next run redoes it."
 
       - name: Export and build site
         run: |
@@ -114,14 +142,14 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: ${{ vars.GCP_WIF_PROVIDER != '' }}
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_SA_EMAIL }}
 
       - name: Set up gcloud
         if: ${{ vars.GCP_WIF_PROVIDER != '' }}
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       # A Google auth timeout shouldn't block the site; the next run replaces every table.
       - name: Load BigQuery
@@ -132,7 +160,7 @@ jobs:
           BQ_DATASET: ${{ vars.BQ_DATASET || 'formd' }}
         run: uv run python -m pipeline.bigquery
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site/dist
 
@@ -144,4 +172,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
