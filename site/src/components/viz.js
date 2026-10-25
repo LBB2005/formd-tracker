@@ -37,7 +37,14 @@ export function metroScope(meta) {
     }
     return cov[keyOf(choice)] ?? null;
   };
-  return {labels, options, sql, phrase, keyOf, tracked, coverage};
+  // AI-tag precision and recall come from hand labels of SF Bay Area and LA startups only.
+  const aiMeasured = (choice) => ["sf_bay", "la"].includes(keyOf(choice));
+  const aiNotice = (choice) => (aiMeasured(choice) ? "" : aiAccuracyNotice());
+  return {labels, options, sql, phrase, keyOf, tracked, coverage, aiMeasured, aiNotice};
+}
+
+export function aiAccuracyNotice() {
+  return html`<p class="notice"><a href="./methodology">AI tag accuracy</a> was measured on SF Bay Area and Los Angeles companies; elsewhere it is unmeasured.</p>`;
 }
 
 // $1,234,567 -> "$1.2M"; compact, proportional.

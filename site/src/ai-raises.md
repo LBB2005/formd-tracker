@@ -5,10 +5,7 @@ title: AI raises
 ```js
 import {usd, num, day, rows, companyLink, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
-const db = DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
-  issuers: FileAttachment("data/issuers.parquet")
-});
+const db = DuckDBClient.of({ai_raises: FileAttachment("data/ai_raises.parquet")});
 ```
 
 <div class="kicker">Startup raises tagged AI</div>
@@ -24,8 +21,8 @@ const all = rows(await db.query(`
   select o.cik, o.issuer_name, o.metro, o.first_filed::varchar as filed, year(o.first_filed)::int as year,
          o.sold_latest::double as sold, o.offering_amt::double as target, o.inferred_stage,
          o.security_class, o.ai_tier, o.n_filings::int as n_filings, o.filing_url,
-         i.ai_evidence, i.domain, i.yc_batch, i.city
-  from offerings o join issuers i using (cik)
+         o.ai_evidence, o.domain, o.yc_batch, o.city
+  from ai_raises o
   where o.is_startup_raise and o.is_new_in_window and o.ai_tier is not null and o.ai_tier <> 'none'
   order by o.first_filed desc`));
 const years = [...new Set(all.map((d) => d.year))].sort();
@@ -59,6 +56,8 @@ const filtered = all.filter((d) =>
   tiers.includes(d.ai_tier) && stages.includes(d.inferred_stage));
 const search = view(Inputs.search(filtered, {placeholder: "Search company, city, evidence…", columns: ["issuer_name", "city", "ai_evidence", "domain"]}));
 ```
+
+${scope.aiNotice(metro)}
 
 <p>${num(search.length)} raises · ${usd(search.reduce((t, d) => t + (d.sold ?? 0), 0))} reported sold · median ${usd(d3.median(search, (d) => d.sold))}</p>
 

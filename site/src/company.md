@@ -6,13 +6,15 @@ title: Company lookup
 import * as Plot from "npm:@observablehq/plot";
 import {C, usd, pct, num, rows, tile, companyLink, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
-const db = DuckDBClient.of({
+const cik = new URLSearchParams(location.search).get("cik");
+// The search directory needs only issuers; one company's page also loads its raises,
+// filings and people.
+const db = cik ? DuckDBClient.of({
   offerings: FileAttachment("data/offerings.parquet"),
   issuers: FileAttachment("data/issuers.parquet"),
   filings: FileAttachment("data/filings.parquet"),
   people: FileAttachment("data/people.parquet")
-});
-const cik = new URLSearchParams(location.search).get("cik");
+}) : DuckDBClient.of({issuers: FileAttachment("data/issuers.parquet")});
 ```
 
 ```js
