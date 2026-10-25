@@ -416,9 +416,15 @@ def main(argv: list[str] | None = None) -> None:
                 claude_judge.pilot(items[:args.pilot])
                 return
             if items and not args.no_submit:
-                ids = claude_judge.submit(items)
-                print(f"Claude: submitted {len(items):,} ambiguous companies in batch(es) "
-                      f"{', '.join(ids)}; results are collected on the next run", flush=True)
+                # Spending cap: what doesn't fit isn't recorded, so the next run sends it.
+                cap = claude_judge.max_usd()
+                send, est = claude_judge.within_cap(items, cap)
+                print(f"Claude: submitting {len(send):,} of {len(items):,} (est ${est:.2f}, "
+                      f"cap ${cap:.2f}); {len(items) - len(send):,} left for later runs", flush=True)
+                if send:
+                    ids = claude_judge.submit(send)
+                    print(f"Claude: submitted {len(send):,} ambiguous companies in batch(es) "
+                          f"{', '.join(ids)}; results are collected on the next run", flush=True)
             print(f"Claude: {len(pending):,} pending from earlier runs; "
                   f"spend so far ~${claude_judge.spend(claude_judge.load_state()):.2f}")
         else:

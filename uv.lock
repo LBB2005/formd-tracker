@@ -265,12 +265,14 @@ dependencies = [
     { name = "duckdb" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "typesafe-sdk" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+]
+jev = [
+    { name = "typesafe-sdk" },
 ]
 
 [package.metadata]
@@ -279,11 +281,11 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.32" },
-    { name = "typesafe-sdk", specifier = "==0.7.5" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
+jev = [{ name = "typesafe-sdk", specifier = "==0.7.5" }]
 
 [[package]]
 name = "h11"

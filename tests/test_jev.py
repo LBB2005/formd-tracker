@@ -1,7 +1,10 @@
 """Jev second-labeller logic in pipeline/jev.py (no network)."""
 
 import json
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
+
+import pytest
 
 import pipeline.jev as jev
 
@@ -50,7 +53,22 @@ def test_blind_draw_is_seeded_and_only_from_confident_agreements(monkeypatch):
     assert list(first.values()).count("blind") == 5 and list(first.values()).count("auto") == 25
 
 
+def fake_sdk(monkeypatch):
+    """typesafe-sdk is an optional group (uv sync --group jev); stand in for it."""
+    mod = ModuleType("typesafe_sdk")
+    mod.Choice = lambda instructions, criteria: SimpleNamespace(instructions=instructions,
+                                                               criteria=criteria)
+    monkeypatch.setitem(sys.modules, "typesafe_sdk", mod)
+
+
+def test_missing_sdk_says_how_to_install_it(monkeypatch):
+    monkeypatch.setitem(sys.modules, "typesafe_sdk", None)   # import raises ImportError
+    with pytest.raises(SystemExit, match="uv sync --group jev"):
+        jev.sdk()
+
+
 def test_ask_never_shows_jev_the_taggers_call(monkeypatch):
+    fake_sdk(monkeypatch)
     seen = {}
 
     class FakeClient:
