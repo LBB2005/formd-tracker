@@ -4,6 +4,10 @@ import duckdb
 
 from pipeline import DB_PATH
 
+# Quarter-over-quarter swings above 20% that have been looked into. They print with their
+# reason instead of warning on every build; any other swing still warns.
+KNOWN_SWINGS = {"2021q1": "2021 VC boom"}
+
 
 def _one(con, sql):
     return con.execute(sql).fetchone()[0]
@@ -61,6 +65,19 @@ def run_checks(con: duckdb.DuckDBPyConnection) -> bool:
     n_ids = _one(con, "select count(distinct offering_id) from filings")
     check("one offering row per offering_id", n_offerings == n_ids, f"{n_offerings:,} vs {n_ids:,}")
 
+    # Re-filed copies of an original D keep their row (so the totals above still reconcile)
+    # but point at the earliest copy and drop out of is_new_in_window.
+    n_dupes, dupe_sold, bad_dupes = con.execute("""
+        select count(*), coalesce(sum(d.sold_latest), 0),
+               count(*) filter (where d.is_new_in_window or o.offering_id is null
+                                or o.duplicate_of is not null or o.cik <> d.cik)
+        from offerings d
+        left join offerings o on o.offering_id = d.duplicate_of
+        where d.duplicate_of is not null
+    """).fetchone()
+    check("duplicate originals collapsed onto the earliest copy", bad_dupes == 0,
+          f"{n_dupes:,} collapsed (${dupe_sold:,.0f} sold counted once); {bad_dupes} bad links")
+
     oversold = _one(con, "select count(*) from offerings where flag_oversold")
     check("oversold offerings are flagged (sold > 2x target)", True, f"{oversold:,} flagged", "WARN")
 
@@ -81,8 +98,10 @@ def run_checks(con: duckdb.DuckDBPyConnection) -> bool:
         where prev is not null and abs(n - prev) / prev > 0.20
         order by 1
     """).fetchall()
-    check("quarterly filing counts within 20% of prior quarter", not jumps,
-          ", ".join(f"{q}: {p:,}->{n:,}" for q, n, p in jumps) or "all within 20%", "WARN")
+    new = [f"{q}: {p:,}->{n:,}" for q, n, p in jumps if q not in KNOWN_SWINGS]
+    known = [f"{q}: {p:,}->{n:,} (known: {KNOWN_SWINGS[q]})" for q, n, p in jumps if q in KNOWN_SWINGS]
+    check("quarterly filing counts within 20% of prior quarter", not new,
+          ", ".join(new + known) or "all within 20%", "WARN")
 
     unplaced = _one(con, "select count(*) from issuers where state = 'CA' and county_fips is null")
     check("California issuers placed in a county", unplaced == 0,

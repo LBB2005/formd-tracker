@@ -149,8 +149,10 @@ select
     a.first_filed - a.first_sale_date                as days_sale_to_first_filing,
     a.n_filings,
     a.n_amendments,
-    -- An offering is "new in window" only if we hold its original D.
+    -- An offering is "new in window" only if we hold its original D (and it is not a
+    -- duplicate; see step 7).
     a.has_original_in_window                         as is_new_in_window,
+    null::varchar                                    as duplicate_of,
     a.began_before_window,
     a.link_methods,
     l.accession                                      as latest_accession,
@@ -185,3 +187,34 @@ select
 from agg a
 join latest l on l.offering_id = a.offering_id
 left join corrections c on c.offering_id = a.offering_id;
+
+-- 7. Duplicate originals. Some filers submit the same original D twice within days
+--    ("Island Green AD-I LP": 0002153787-26-000001 and -000002, both 2026-10-02).
+--    Same CIK, first-sale date, offering amount and amount sold, filed within 7 days of
+--    the previous one: each later copy points at the earliest via duplicate_of and stops
+--    counting as a new raise. The row stays, so filing-level totals still reconcile.
+--    Filings with no amount and nothing sold are left alone: empty filings would collapse.
+create or replace temp table _dupes as
+with cand as (
+    select offering_id, cik, first_sale_date, offering_amt, sold_latest, first_filed
+    from offerings
+    where is_new_in_window and (offering_amt > 0 or sold_latest > 0)
+),
+runs as (  -- a new run starts when the gap to the previous identical filing exceeds 7 days
+    select *, sum(starts_run::int) over (partition by cik, first_sale_date, offering_amt, sold_latest
+                                         order by first_filed, offering_id) as run_no
+    from (
+        select *, coalesce(date_diff('day', lag(first_filed) over (
+                      partition by cik, first_sale_date, offering_amt, sold_latest
+                      order by first_filed, offering_id), first_filed) > 7, true) as starts_run
+        from cand)
+)
+select offering_id,
+       first_value(offering_id) over (partition by cik, first_sale_date, offering_amt, sold_latest, run_no
+                                      order by first_filed, offering_id) as duplicate_of
+from runs
+qualify offering_id <> duplicate_of;
+
+update offerings set duplicate_of = d.duplicate_of, is_new_in_window = false
+from _dupes d
+where offerings.offering_id = d.offering_id;

@@ -21,7 +21,7 @@ raises as (
            lag(coalesce(o.offering_amt, o.sold_latest))
                over (partition by o.cik order by o.first_filed, o.offering_id) as prev_size
     from offerings o
-    where o.is_startup_raise
+    where o.is_startup_raise and o.duplicate_of is null  -- a re-filed copy is not a raise
 ),
 fill as (
     select r.offering_id,

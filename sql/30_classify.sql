@@ -9,7 +9,8 @@ with base as (
         o.offering_id, o.cik, o.issuer_name, o.industry_group, o.fund_type, o.entity_type,
         o.is_pooled_fund, o.has_3c, o.is_equity, o.is_debt, o.is_option, o.is_other_type,
         o.other_type_desc, f.is_security_to_be_acquired, o.first_filed, o.first_sale_date,
-        o.offering_amt, o.investors_latest, o.metro, o.is_new_in_window, i.is_venture_stage,
+        o.offering_amt, o.investors_latest, o.metro, o.is_new_in_window, o.duplicate_of,
+        i.is_venture_stage,
         regexp_matches(o.issuer_name,
             '(?i)(a series of|\bspv\d*\b|syndicat|co-?invest|\(investment in|\bspecial purpose|'
             '\s-\s.*\bseries$|'
@@ -196,13 +197,14 @@ set is_startup_raise = kind = 'operating_company' and is_venture_stage
                        and security_class in ('equity', 'safe_or_convertible')
 where len(overridden_fields) > 0;
 
--- Managers: one row per manager_key across all fund vehicles.
+-- Managers: one row per manager_key across all fund vehicles. Duplicate filings
+-- (duplicate_of, 20_offerings.sql) are not counted as extra vehicles.
 create or replace table managers as
 select
     manager_key,
-    count(*)                                                    as n_vehicles,
-    count(*) filter (where vehicle_type = 'blind_pool')         as n_blind_pool,
-    count(*) filter (where vehicle_type = 'spv')                as n_spv,
+    count(*) filter (where duplicate_of is null)                as n_vehicles,
+    count(*) filter (where vehicle_type = 'blind_pool' and duplicate_of is null) as n_blind_pool,
+    count(*) filter (where vehicle_type = 'spv' and duplicate_of is null)        as n_spv,
     count(distinct cik)                                         as n_ciks,
     min(first_filed)                                            as first_vehicle_filed,
     max(fund_number)                                            as fund_number_max,
@@ -225,7 +227,7 @@ with fams as (
                as fund_family_id,
            fund_number, first_filed, offering_amt, offering_id, is_parallel, is_new_in_window
     from offering_class
-    where vehicle_type = 'blind_pool'
+    where vehicle_type = 'blind_pool' and duplicate_of is null  -- a duplicate is not a vehicle
 ),
 agg as (
     select fund_family_id, any_value(manager_key) as manager_key,

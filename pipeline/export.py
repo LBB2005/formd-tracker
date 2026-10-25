@@ -30,7 +30,7 @@ TABLES = {
     "offerings": """
         select o.offering_id, o.cik, o.issuer_name, o.metro, o.county_name, o.kind,
                o.vehicle_type, o.fund_bucket, o.fund_number, o.manager_key, o.security_class,
-               o.is_startup_raise, o.is_new_in_window, o.began_before_window,
+               o.is_startup_raise, o.is_new_in_window, o.duplicate_of, o.began_before_window,
                o.first_sale_date, o.first_filed, o.last_filed, o.days_open,
                o.days_sale_to_first_filing, o.n_filings, o.n_amendments,
                o.offering_amt, o.offering_indefinite, o.sold_latest, o.raise_size, o.fill_pct,
@@ -120,7 +120,8 @@ def main() -> None:
             "data_through": str(con.execute("select max(filing_date) from filings").fetchone()[0]),
             "data_from": str(con.execute("select min(filing_date) from filings").fetchone()[0]),
             "n_filings": con.execute("select count(*) from filings").fetchone()[0],
-            "n_offerings": con.execute("select count(*) from offerings").fetchone()[0],
+            "n_offerings": con.execute(
+                "select count(*) from offerings where duplicate_of is null").fetchone()[0],
             "n_issuers": con.execute("select count(*) from issuers").fetchone()[0],
             "sources": [list(r) for r in con.execute(
                 "select source_quarter, source, complete from load_manifest order by 1").fetchall()],
