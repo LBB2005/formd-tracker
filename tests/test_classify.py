@@ -23,6 +23,13 @@ def macros():
     ("122 West Ventures II, L.P.", 2, "122 west ventures"),
     ("MVP Vintage 2023, LP", None, "mvp vintage"),
     ("X, a series of Rhone VC, LP", None, "rhone vc"),
+    # Leading numbers are part of the name; a leading letter before a digit is too.
+    ("8-Bit Capital II, L.P.", 2, "8 bit capital"),
+    ("HE-0129 Fund I, a series of 5 Eyes Ventures, LP", 1, "5 eyes ventures"),
+    ("n2 Venture Capital Fund I, LP", 1, "n2 venture capital"),
+    ("N49P Fund IV, L.P.", 4, "n49p"),
+    ("MA-1111 Fund I, a series of N49P, LP", 1, "n49p"),
+    ("N2 Capital Ventures, LLC", None, "n2 capital ventures"),
 ])
 def test_fund_number_and_manager_stem(name, number, stem):
     con = macros()
@@ -63,6 +70,9 @@ OFFERING_COLS = {
     "offering_amt": "double", "investors_latest": "integer", "metro": "varchar",
     "is_new_in_window": "boolean", "duplicate_of": "varchar", "latest_accession": "varchar",
 }
+
+
+LLC, LP = "Limited Liability Company", "Limited Partnership"
 
 
 def offering(oid, name, industry="Other Technology", fund_type=None, filed=date(2024, 1, 1),
@@ -132,6 +142,50 @@ def test_fund_vs_company_and_vehicle_types():
     assert sec == {"startup": "equity", "safe": "safe_or_convertible"}
 
 
+def test_fund_named_non_corporations_are_not_operating_companies():
+    # Filed under industries like "Other", so only the name says these pool money.
+    con = classify([
+        offering("hyla", "Hyla Fund III, LLC", industry="Other", entity_type=LLC, is_equity=True),
+        offering("wwc", "WWC GEM Investment Fund II, LP", industry="Other Banking and Financial Services",
+                 entity_type=LP, is_equity=True),
+        offering("gp", "TEP 2022 FUND", industry="Oil and Gas", entity_type="General Partnership",
+                 is_equity=True),
+        offering("drill", "USEDC 2024 B Drilling Fund LP", industry="Oil and Gas", entity_type=LP,
+                 is_equity=True),
+        offering("water", "Water Fund 2020-B, LP", industry="Other Energy", entity_type=LP,
+                 is_equity=True),
+        offering("re", "Arbor Real Estate Fund LLC", industry="Residential", entity_type=LLC),
+        # Corporations keep the old rules, as do fund-service companies and "Fund" inside a word.
+        offering("ember", "Ember Fund Inc", industry="Other Banking and Financial Services",
+                 entity_type="Corporation", is_option=True),
+        offering("falconx", "FalconX Inc", industry="Investing", entity_type="Corporation",
+                 is_equity=True),
+        offering("mgmt", "Meta4 Fund Management, LLC", industry="Other", entity_type=LLC,
+                 is_equity=True),
+        offering("inc", "Foursquare Loan Fund, Inc.", industry="Other", entity_type="Other",
+                 is_debt=True),
+        offering("fundbox", "Fundbox LLC", entity_type=LLC, is_equity=True),
+    ])
+    assert calls(con) == {
+        "hyla": ("fund", "blind_pool"),
+        "wwc": ("fund", "blind_pool"),
+        "gp": ("other_investing", None),
+        "drill": ("other_investing", None),
+        "water": ("other_investing", None),
+        "re": ("real_estate", None),
+        "ember": ("operating_company", None),
+        "falconx": ("operating_company", None),
+        "mgmt": ("operating_company", None),
+        "inc": ("operating_company", None),
+        "fundbox": ("operating_company", None),
+    }
+    raises = {oid for (oid,) in con.execute(
+        "select offering_id from offering_class where is_startup_raise").fetchall()}
+    assert raises == {"ember", "falconx", "mgmt", "fundbox"}
+    assert con.execute("select kind_reason from offering_class where offering_id = 'hyla'"
+                       ).fetchone()[0] == "name: fund word (not a corporation)"
+
+
 def test_numbered_deal_series_become_spvs():
     rows = [vc(f"hcm{i}", f"HCM G {r}, L.P.", cik=f"H{i}", filed=date(2024, 1, 1) + timedelta(days=30 * i))
             for i, r in enumerate(["I", "II", "III", "IV", "V"])]
@@ -140,8 +194,6 @@ def test_numbered_deal_series_become_spvs():
     assert {got[f"hcm{i}"][1] for i in range(5)} == {"spv"}
     assert got["accel"][1] == "blind_pool"
 
-
-LLC, LP = "Limited Liability Company", "Limited Partnership"
 
 
 @pytest.mark.parametrize("name, entity, code, family", [
@@ -232,6 +284,21 @@ def test_overrides_apply_and_are_recorded():
     vt, fields = con.execute(
         "select vehicle_type, overridden_fields from offering_class").fetchone()
     assert vt == "blind_pool" and fields == ["vehicle_type"]
+
+
+def test_rule_results_survive_overrides():
+    # The review sample is scored against what the rules say, not the hand-corrected value.
+    con = classify(
+        [vc("mystery", "Quiet Harbor LP", cik="0000000009"),
+         offering("co", "Harbor Labs LLC", cik="0000000010", is_equity=True)],
+        overrides=[("0000000009", None, "vehicle_type", "blind_pool"),
+                   ("0000000010", None, "kind", "fund")],
+    )
+    got = {r[0]: r[1:] for r in con.execute(
+        "select offering_id, kind, rule_kind, vehicle_type, rule_vehicle_type, is_startup_raise "
+        "from offering_class").fetchall()}
+    assert got == {"mystery": ("fund", "fund", "blind_pool", "unclear", False),
+                   "co": ("fund", "operating_company", None, None, False)}
 
 
 def test_established_companies_are_not_startup_raises():
