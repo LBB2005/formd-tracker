@@ -245,10 +245,12 @@ def ask_model(cik: str, name: str, domain: str, page, model: str) -> dict | None
         out = json.loads(resp.json()["response"])
     except (requests.RequestException, ValueError, KeyError):
         return None
+    if not isinstance(out, dict):
+        return None
+    from pipeline.claude_judge import verbatim  # same whole-word quote rule as the Claude judge
     answer = str(out.get("answer", "")).strip().lower()
     quote = " ".join(str(out.get("quote", "")).split())
-    squashed = " ".join(excerpt.split()).lower()
-    verified = bool(quote) and quote.lower() in squashed and bool(AI_TERMS.search(quote))
+    verified = bool(quote) and verbatim(quote, excerpt) and bool(AI_TERMS.search(quote))
     if answer == "yes" and not verified:
         answer = "unclear"  # an unsupported yes is not evidence
     result = {"answer": answer if answer in ("yes", "no", "unclear") else "unclear",

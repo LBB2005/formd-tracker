@@ -72,3 +72,25 @@ def test_name_at_filing_is_time_correct():
     con.execute((SQL_DIR / "40_ai_tag.sql").read_text())
     got = dict(con.execute("select offering_id, ai_name_at_filing from offerings").fetchall())
     assert got == {"r2019": False, "r2024": True}
+
+
+@pytest.mark.parametrize("model_out, answer", [
+    ({"answer": "yes", "quote": "AI agents for sales teams", "reason": ""}, "yes"),
+    ({"answer": "yes", "quote": "AI platform", "reason": ""}, "unclear"),  # only inside "OpenAI platform"
+    (["yes"], None),  # valid JSON that isn't an object
+])
+def test_local_judge_quote_must_be_whole_words(tmp_path, monkeypatch, model_out, answer):
+    import json
+    from types import SimpleNamespace
+    from pipeline import ai_tag
+
+    class Resp:
+        def raise_for_status(self): pass
+        def json(self): return {"response": json.dumps(model_out)}
+
+    monkeypatch.setattr(ai_tag, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(ai_tag.requests, "post", lambda *a, **k: Resp())
+    page = SimpleNamespace(hero="Acme builds AI agents for sales teams.",
+                           text="Runs on the OpenAI platform.")
+    result = ai_tag.ask_model("1", "Acme", "acme.com", page, "test-model")
+    assert (result["answer"] if result else None) == answer
