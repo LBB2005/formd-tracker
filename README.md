@@ -11,7 +11,8 @@ Nothing needs to run on your own computer. A GitHub Actions workflow
 tab, and does the following:
 1. Rebuilds the database from the SEC.
 2. Checks new companies' homepages for AI evidence (up to 3 hours per run).
-3. Sends ambiguous homepages to Claude through the Batches API.
+3. Sends ambiguous homepages to Claude through the Batches API, up to `CLAUDE_MAX_USD`
+   of estimated spend per run (default $10); the rest wait for later runs.
 4. Commits the small `data/enrich/` results back to the repo.
 5. Loads BigQuery through keyless Workload Identity Federation.
 6. Publishes the website to GitHub Pages.
@@ -20,8 +21,9 @@ The nationwide AI pass finishes over a few daily runs; after that each run only 
 new filings.
 
 Repository settings it relies on:
-- Secrets: `SEC_USER_AGENT`, `ANTHROPIC_API_KEY`
-- Variables: `BQ_PROJECT`, `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`
+- Secrets: `SEC_USER_AGENT`, `ANTHROPIC_API_KEY` (`scripts/set-secret.sh` sets one from a
+  TextEdit window, or use Settings → Secrets → Actions)
+- Variables: `BQ_PROJECT`, `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`, optional `CLAUDE_MAX_USD`
 - Pages: source set to GitHub Actions
 
 The Google service account can write only to the `formd` dataset and run BigQuery jobs.
@@ -79,6 +81,7 @@ Each item you haven't labelled gets a route:
 The Desk's "Needs you" view shows only the first three routes.
 
 ```bash
+uv sync --group jev                             # the Jev SDK is optional since 2026-10-25
 scripts/set-key.sh                              # saves TYPESAFE_API_KEY to .env, hidden
 uv run python -m pipeline.jev run               # Jev's answers -> review/jev_labels.csv
 uv run python -m pipeline.jev calibrate         # Jev vs your labels: trust it first?
@@ -175,6 +178,11 @@ whole chain back to the root. The original D's accession becomes `offering_id`.
 - A D/A with a broken pointer falls back to an earlier D from the same CIK with the same
   first-sale date, then the same offering amount within 18 months. 87 filings link this way.
 - 119 D/As (0.08%) stay unlinked as `orphan` offerings.
+- Some issuers file the same original D twice. A new offering that matches an earlier one
+  from the same CIK on first-sale date, offering amount and amount sold, filed within 7
+  days of the previous copy, gets `duplicate_of` (the earliest copy) and is left out of
+  new-raise counts. Empty filings (no amount, nothing sold) never collapse. 541 offerings
+  ($4.4B sold) collapse this way; the rows stay in the tables.
 - "Raised" is the latest `TOTALAMOUNTSOLD`, never a sum. Decreases are kept and
   flagged as corrections.
 
@@ -204,7 +212,11 @@ Company Act 3(c) exclusion, or has a vehicle name ("a Series of", "SPV", "Syndic
 as "Anthropic – a Series of Aurum VP Fund LLC", filed as "Other". Of the rest, real
 estate industries become `real_estate` and "Investing" becomes `other_investing`, unless
 the issuer is a corporation: fintech startups such as FalconX file as "Investing".
-Everything else is an `operating_company`. `is_startup_raise` keeps operating companies
+A non-corporation with a whole-word "Fund" in its name ("Hyla Fund III, LLC", filed as
+"Other") is a `fund`, or `other_investing` under oil, gas and energy industries (drilling
+and royalty programs); this moved 1,069 offerings to funds and 253 to other investing.
+Everything else is an `operating_company`. `rule_kind` and `rule_vehicle_type` keep what
+the rules said before hand overrides, so Methodology can grade the rules themselves. `is_startup_raise` keeps operating companies
 selling equity or a SAFE/convertible (SAFEs usually appear as "option" or "other: SAFE").
 
 **SPV or blind pool.** Among funds, vehicle names decide:
@@ -253,7 +265,8 @@ would be fitted to the sample.
 **Managers and emerging managers.** `manager_key` is the fund name up to its fund number,
 minus vehicle words. For example, "Andreessen Horowitz Fund IX – AI Infrastructure, L.P."
 becomes "andreessen horowitz". Platform SPVs take the platform as manager ("X, a Series
-of Rhone VC" becomes "rhone vc"). Generic stems ("capital partners") are not merged
+of Rhone VC" becomes "rhone vc"). Names that start with letters and digits keep them
+("n2 Venture Capital" becomes "n2 venture capital"). Generic stems ("capital partners") are not merged
 across CIKs. Parallel vehicles with the same manager and fund number (or vintage year)
 form one fund family. A family is **emerging** if it is Fund I–III; for unnumbered funds,
 if the manager has at most two earlier families in the data. The Fund I–III cutoff is
@@ -312,12 +325,16 @@ Each build fails if:
 - a filing date fails to parse
 - a filing has no offering
 - dollar totals differ between the filing and offering layers
+- a duplicate original is still counted as new, or points at a missing offering, another
+  duplicate or a different CIK
 
 It warns on:
 - orphan amendments at 1% or more
 - offerings spanning several CIKs
 - flagged amounts
-- quarter-over-quarter swings above 20% (2021 Q1 trips this; it is the 2021 boom)
+- quarter-over-quarter swings above 20%, except explained ones listed in
+  `KNOWN_SWINGS` in `pipeline/checks.py` (2021 Q1, the 2021 boom), which print as PASS
+  with the reason
 - California issuers with no county
 - unclear SF/LA VC vehicles at 20% or more
 - override rows that match no CIK or offering
@@ -410,10 +427,12 @@ with robots.txt respected and a cache of 90 days. Scoring:
   itself says AI).
 - **weak:** body mentions only, or a guessed `.ai` domain.
 
-**Layer 4, model tie-break**, for weak-only cases. A local `llama3.2:3b` (Ollama, $0)
+**Layer 4, model tie-break**, for weak-only cases. In CI this is Claude Opus 5.5 through
+the Message Batches API (`pipeline/claude_judge.py`, `--judge claude`, the default);
+locally it can be `llama3.2:3b` through Ollama (`--judge ollama`, $0). Either model
 answers yes/no/unclear and must quote the homepage phrase that shows the core product is
-AI. A "yes" counts only if that quote appears verbatim in the text sent and contains an
-AI term. Without that check, the 3B model said "yes" to solar electronics, display optics
+AI. A "yes" counts only if that quote appears verbatim, as whole words, in the text sent
+and contains an AI term ("AI platform" doesn't verify against "OpenAI platform"). Without that check, the 3B model said "yes" to solar electronics, display optics
 and a breathing-test device; with it, those become "no" and real AI companies still pass.
 Earlier answers are reused from `data/enrich/llm_labels.parquet`, so CI runs without a
 model keep them.
