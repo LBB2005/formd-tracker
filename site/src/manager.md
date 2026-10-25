@@ -50,7 +50,7 @@ if (mgr) {
     select cik, issuer_name, vehicle_type, fund_number::int as fund_number, first_filed::varchar as filed,
            offering_amt::double as target, offering_indefinite, sold_latest::double as sold,
            investors_latest::int as investors, filing_url
-    from offerings where manager_key = '${esc(key)}' order by first_filed`));
+    from offerings where manager_key = '${esc(key)}' and duplicate_of is null order by first_filed`));
   const fams = rows(await db.query(`
     select fund_family_id, fund_number::int as fund_number, first_filed::varchar as filed, n_vehicles::int as n_vehicles,
            target_amt::double as target, is_emerging, emerging_basis

@@ -133,6 +133,33 @@ def test_unmatched_amendment_is_orphan():
     assert links(con)["A-2"] == ("A-2", "orphan")
 
 
+def test_refiled_original_is_a_duplicate_not_a_new_raise():
+    con = build([
+        # Filed twice on one day (Island Green AD-I LP), then copies 6 and 12 days later,
+        # each within 7 days of the one before: all point at the earliest accession.
+        filing("D-2", date(2026, 10, 2), sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+        filing("D-1", date(2026, 10, 2), sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+        filing("D-3", date(2026, 10, 8), sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+        filing("D-5", date(2026, 10, 14), sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+        # Same figures, but over a month later: a new raise.
+        filing("D-4", date(2026, 11, 20), sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+        # Different amount sold: a different raise.
+        filing("E-1", date(2026, 10, 2), sale=date(2026, 8, 24), amt=17e6, sold=5e6),
+        # Empty filings (no amount, nothing sold) are never collapsed.
+        filing("F-1", date(2026, 10, 2), sale=None, amt=None, sold=0.0),
+        filing("F-2", date(2026, 10, 3), sale=None, amt=None, sold=0.0),
+        # Another CIK with identical figures.
+        filing("G-1", date(2026, 10, 2), cik="0000000002", sale=date(2026, 8, 24), amt=17e6, sold=17e6),
+    ])
+    got = dict(con.execute("select offering_id, duplicate_of from offerings").fetchall())
+    assert got == {"D-1": None, "D-2": "D-1", "D-3": "D-1", "D-5": "D-1", "D-4": None,
+                   "E-1": None, "F-1": None, "F-2": None, "G-1": None}
+    new = dict(con.execute("select offering_id, is_new_in_window from offerings").fetchall())
+    assert [o for o, is_new in sorted(new.items()) if not is_new] == ["D-2", "D-3", "D-5"]
+    # Rows are kept, so filing-level and offering-level totals still match.
+    assert con.execute("select count(*) from offerings").fetchone()[0] == 9
+
+
 @pytest.mark.parametrize("order", [["X-1", "X-2"], ["X-2", "X-1"]])
 def test_same_day_filings_resolve_deterministically(order):
     rows = {

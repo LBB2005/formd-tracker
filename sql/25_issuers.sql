@@ -11,7 +11,10 @@ names as (
     select cik,
            list_sort(list_distinct(flatten(list(previous_names)) || list(issuer_name))) as all_names,
            count(*)                                  as n_filings,
-           count(distinct offering_id)               as n_offerings,
+           -- Re-filed copies of an original D (duplicate_of, 20_offerings.sql) don't count.
+           count(distinct offering_id) filter (where offering_id not in
+               (select offering_id from offerings where duplicate_of is not null))
+                                                     as n_offerings,
            min(filing_date)                          as first_filing,
            max(filing_date)                          as last_filing
     from filings

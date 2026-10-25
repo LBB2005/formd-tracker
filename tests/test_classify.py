@@ -61,7 +61,7 @@ OFFERING_COLS = {
     "is_debt": "boolean", "is_option": "boolean", "is_other_type": "boolean",
     "other_type_desc": "varchar", "first_filed": "date", "first_sale_date": "date",
     "offering_amt": "double", "investors_latest": "integer", "metro": "varchar",
-    "is_new_in_window": "boolean", "latest_accession": "varchar",
+    "is_new_in_window": "boolean", "duplicate_of": "varchar", "latest_accession": "varchar",
 }
 
 
