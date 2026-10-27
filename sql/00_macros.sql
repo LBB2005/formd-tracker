@@ -15,6 +15,16 @@ create or replace macro parse_amount(s) as
 
 create or replace macro parse_bool(s) as lower(trim(s)) = 'true';
 
+-- Filers type the previous accession number by hand and sometimes drop leading zeros
+-- ("001104659-21-005765", "0001104659-20-94663"). Pad each part back to 10-2-6 digits so
+-- the amendment still reaches its original; anything else is kept as typed.
+create or replace macro parse_accession(s) as
+    case when regexp_full_match(trim(s), '\d{1,10}-\d{1,2}-\d{1,6}')
+         then lpad(split_part(trim(s), '-', 1), 10, '0') || '-'
+              || lpad(split_part(trim(s), '-', 2), 2, '0') || '-'
+              || lpad(split_part(trim(s), '-', 3), 6, '0')
+         else nullif(trim(s), '') end;
+
 -- Roman numerals I..L, and spelled-out numbers ("Wing Strategic Partners Four").
 create or replace macro romans() as [
     'i','ii','iii','iv','v','vi','vii','viii','ix','x','xi','xii','xiii','xiv','xv','xvi',

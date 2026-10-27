@@ -61,6 +61,19 @@ def test_unquote():
     assert con.execute("select unquote('Plain, LLC')").fetchone()[0] == "Plain, LLC"
 
 
+@pytest.mark.parametrize("typed, parsed", [
+    ("0001104659-21-005765", "0001104659-21-005765"),
+    ("001104659-21-005765", "0001104659-21-005765"),
+    ("0001104659-20-94663", "0001104659-20-094663"),
+    ("1654954-20-009161", "0001654954-20-009161"),
+    (" 0001654954-20-009161 ", "0001654954-20-009161"),
+    ("N/A", "N/A"),
+    ("", None),
+])
+def test_parse_accession_restores_dropped_zeros(typed, parsed):
+    assert macros().execute("select parse_accession(?)", [typed]).fetchone()[0] == parsed
+
+
 OFFERING_COLS = {
     "offering_id": "varchar", "cik": "varchar", "issuer_name": "varchar",
     "industry_group": "varchar", "fund_type": "varchar", "entity_type": "varchar",

@@ -26,7 +26,7 @@ select
     s.source_quarter                                    as source_quarter,
     trim(s.SUBMISSIONTYPE)                              as form,
     trim(s.SUBMISSIONTYPE) = 'D/A' or parse_bool(o.ISAMENDMENT) as is_amendment,
-    nullif(trim(o.PREVIOUSACCESSIONNUMBER), '')         as prev_accession,
+    parse_accession(o.PREVIOUSACCESSIONNUMBER)          as prev_accession,
     nullif(trim(s.SIC_CODE), '')                        as sic_code,
 
     -- What is being raised

@@ -55,7 +55,7 @@ display(Inputs.table(meta.sources.map(([q, s, c]) => ({Quarter: q, Source: s ===
 
 ## Unit of analysis: a raise, not a filing
 
-A "raise" is one Form D offering: the original filing plus all its amendments. Amendments usually point at the previous amendment rather than the original, so each chain is walked back to its root. Raises whose original filing predates 2019 are marked as such and left out of "new raise" counts. Where the pointer is missing, the amendment is matched to an earlier filing from the same issuer with the same first-sale date, then the same offering amount within 18 months. Only 0.08% of amendments stay unlinked. "Amount raised" is the latest reported total sold, never a sum across filings. Decreases are kept and flagged as corrections.
+A "raise" is one Form D offering: the original filing plus all its amendments. Amendments usually point at the previous amendment rather than the original, so each chain is walked back to its root. Raises whose original filing predates 2019 are marked as such and left out of "new raise" counts. Where the pointer is missing, the amendment is matched to an earlier filing from the same issuer with the same first-sale date, then the same offering amount within 18 months. As of October 2026 every amendment reaches its raise through its own pointers, and a check of 450 filings against EDGAR matched CIK, form, amounts and investor counts on all of them (see the [link audit](https://github.com/LBB2005/formd-tracker/blob/main/docs/audit-2026-10-26-sec-links.md)). "Amount raised" is the latest reported total sold, never a sum across filings. Decreases are kept and flagged as corrections.
 
 ## Startups vs funds
 

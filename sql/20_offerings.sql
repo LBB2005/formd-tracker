@@ -8,7 +8,9 @@
 --   fallback_amount       ... matched by (CIK, total offering amount) within 18 months
 --   orphan                D/A we could not link; stands alone as its own offering
 
--- 1. Walk previous-accession pointers back as far as they go.
+-- 1. Walk previous-accession pointers back as far as they go. Insurance separate
+--    accounts amend one offering monthly (Nationwide: 90+ D/As since 2019), so the cap
+--    only guards against pointer loops; at 50 it cut real chains into orphans.
 create or replace temp table _walk as
 with recursive walk(accession, cur, depth) as (
     select accession, accession, 0 from filings
@@ -19,7 +21,7 @@ with recursive walk(accession, cur, depth) as (
     where f.is_amendment
       and f.prev_accession is not null
       and f.prev_accession <> f.accession
-      and w.depth < 50
+      and w.depth < 1000
 )
 select accession, arg_max(cur, depth) as root, max(depth) as chain_depth
 from walk

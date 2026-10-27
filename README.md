@@ -176,8 +176,12 @@ whole chain back to the root. The original D's accession becomes `offering_id`.
 - External chains that enter the window at different points are merged on
   (CIK, first-sale date).
 - A D/A with a broken pointer falls back to an earlier D from the same CIK with the same
-  first-sale date, then the same offering amount within 18 months. 87 filings link this way.
-- 119 D/As (0.08%) stay unlinked as `orphan` offerings.
+  first-sale date, then the same offering amount within 18 months. As of 2026-10-26 no
+  filing needs this: the 102 that used it were long chains cut off by the old 50-step
+  walk limit (see `docs/audit-2026-10-26-sec-links.md`).
+- D/As that still can't be linked stay as `orphan` offerings (0 as of 2026-10-26).
+- Hand-typed previous-accession numbers with dropped zeros ("001104659-21-005765") are
+  padded back to 10-2-6 digits before the walk.
 - Some issuers file the same original D twice. A new offering that matches an earlier one
   from the same CIK on first-sale date, offering amount and amount sold, filed within 7
   days of the previous copy, gets `duplicate_of` (the earliest copy) and is left out of

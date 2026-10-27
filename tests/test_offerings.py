@@ -1,6 +1,6 @@
 """Amendment-chain rules in sql/20_offerings.sql, on small synthetic filings."""
 
-from datetime import date
+from datetime import date, timedelta
 
 import duckdb
 import pytest
@@ -122,6 +122,18 @@ def test_broken_pointer_falls_back_to_sale_date_then_amount():
     got = links(con)
     assert got["A-2"] == ("A-1", "fallback_sale_date")
     assert got["B-2"] == ("B-1", "fallback_amount")
+
+
+def test_long_amendment_chain_reaches_its_original():
+    # A monthly filer: 1 original plus 95 D/As, each pointing at the one before.
+    rows = [filing("N-0", date(2019, 1, 10))]
+    rows += [filing(f"N-{i}", date(2019, 1, 10) + timedelta(days=30 * i), "D/A",
+                    prev=f"N-{i - 1}", sold=1_000.0 * i) for i in range(1, 96)]
+    con = build(rows)
+    got = links(con)
+    assert {o for o, _ in got.values()} == {"N-0"}
+    assert {m for _, m in got.values()} == {"original", "prev_pointer"}
+    assert con.execute("select count(*), any_value(sold_latest) from offerings").fetchone() == (1, 95_000)
 
 
 def test_unmatched_amendment_is_orphan():
