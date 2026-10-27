@@ -113,6 +113,45 @@ table { font-variant-numeric: tabular-nums; }
   .card { padding: 0.9rem 0.8rem 0.6rem; }
 }
 
+/* Company lookup: search box, filter chips and result cards. */
+.lookup-search { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--ink-2); max-width: none; margin: 0.4rem 0 0; }
+.lookup-field { display: flex; align-items: center; gap: 0.75rem; background: var(--surface-1); border: 1.5px solid var(--series-1);
+  border-radius: 12px; padding: 0 1.1rem; min-height: 60px; color: var(--ink-2); }
+.lookup-field input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 1.25rem; color: var(--ink); border: 0; outline: none; background: transparent; padding: 0.85rem 0; }
+.lookup-field:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--series-1) 25%, transparent); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 0; }
+.chips button { font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 999px; padding: 0.45rem 0.9rem; min-height: 36px; cursor: pointer; }
+.chips button:hover { border-color: var(--ink-muted); }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.lookup-status { font-size: 0.85rem; color: var(--ink-2); margin: 0.9rem 0 0.8rem; max-width: none; }
+.lookup-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 0.9rem; }
+.lookup-card { display: flex; flex-direction: column; gap: 0.75rem; background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 12px; padding: 1rem 1.15rem; color: var(--ink); text-decoration: none; min-width: 0; }
+a.lookup-card[href] { color: var(--ink); }
+a.lookup-card[href]:hover { border-color: var(--series-1); text-decoration: none; }
+a.lookup-card:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.lookup-name { font-family: var(--serif); font-weight: 600; font-size: 1.2rem; line-height: 1.2; overflow-wrap: anywhere; }
+.lookup-place { font-size: 0.84rem; color: var(--ink-2); margin-top: 0.15rem; }
+.lookup-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lookup-stats { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 1.3rem; }
+.lookup-stats > div:not(.spark) { display: flex; flex-direction: column; gap: 0.1rem; }
+.lookup-stats span { font-size: 0.75rem; color: var(--ink-2); white-space: nowrap; }
+.lookup-stats b { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spark { margin-left: auto; width: 116px; flex: none; }
+.spark-bars { display: flex; align-items: flex-end; gap: 3px; height: 38px; border-bottom: 1px solid var(--baseline); }
+.spark-bars i { flex: 1 1 0; background: var(--grid); border-radius: 1px 1px 0 0; }
+.spark-bars i.on { background: var(--series-1); }
+.spark-axis { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--ink-2); margin-top: 0.2rem; }
+.lookup-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem; font-size: 0.8rem; color: var(--ink-2);
+  border-top: 1px solid var(--hairline); padding-top: 0.6rem; margin-top: auto; }
+.lookup-foot .go { color: var(--series-1); white-space: nowrap; }
+.lookup-card.skeleton { min-height: 190px; }
+.sk { display: block; border-radius: 4px; background: linear-gradient(90deg, var(--grid) 0%, var(--surface-1) 50%, var(--grid) 100%);
+  background-size: 200% 100%; animation: sk-shimmer 1.4s linear infinite; }
+@keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+
 /* Table-heavy pages use the full content width. */
 #observablehq-main { max-width: 1240px; }
 

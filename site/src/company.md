@@ -4,48 +4,122 @@ title: Company lookup
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
-import {C, usd, pct, num, rows, tile, companyLink, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
+import {C, usd, pct, num, rows, tile, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
 const meta = FileAttachment("data/meta.json").json();
 const cik = new URLSearchParams(location.search).get("cik");
-// The search directory needs only issuers; one company's page also loads its raises,
+// Search reads only the slim directory; one company's page also loads its raises,
 // filings and people.
 const db = cik ? DuckDBClient.of({
   offerings: FileAttachment("data/offerings.parquet"),
   issuers: FileAttachment("data/issuers.parquet"),
   filings: FileAttachment("data/filings.parquet"),
   people: FileAttachment("data/people.parquet")
-}) : DuckDBClient.of({issuers: FileAttachment("data/issuers.parquet")});
+}) : DuckDBClient.of({directory: FileAttachment("data/directory.parquet")});
+const titleCase = (s) => (s ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 ```
 
 ```js
 const issuer = cik ? rows(await db.query(`select * replace (first_filing::varchar as first_filing,
     last_filing::varchar as last_filing) from issuers
     where cik = '${cik.replace(/\D/g, "").padStart(10, "0")}'`))[0] : null;
-const titleCase = (s) => (s ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 ```
 
 ```js
-if (!issuer) {
-  display(html`<div class="kicker">Company lookup</div><h1>Find a company or fund</h1>
-  <p class="dek">Search every US startup and venture fund that filed a Form D since 2019. Each page shows its raises, every filing with a link to the SEC, the people named on the filings, and why it is or isn't tagged AI.</p>`);
+// The search view draws before the data arrives: title, search box and placeholder cards
+// first, then the cards fill in once the directory has loaded.
+const KIND_LABEL = {operating_company: "Startup", fund: "Fund"};
+const SHOW = ["All", "Startups", "Funds", "AI only"];
+
+function searchBox() {
+  const input = html`<input type="search" placeholder="Try Harvey, Crusoe or San Francisco" autocomplete="off" spellcheck="false">`;
+  const el = html`<label class="lookup-search"><span>Search startups and venture funds by name, city or state</span>
+    <div class="lookup-field"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>${input}</div></label>`;
+  Object.defineProperty(el, "value", {get: () => input.value});
+  return el;
 }
+
+function chips(options) {
+  const el = html`<div class="chips" role="group" aria-label="Show">${options.map((o, i) =>
+    html`<button type="button" aria-pressed=${i === 0 ? "true" : "false"}>${o}</button>`)}</div>`;
+  el.value = options[0];
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.textContent === el.value) return;
+    el.value = b.textContent;
+    for (const x of el.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b));
+    el.dispatchEvent(new Event("input", {bubbles: true}));
+  });
+  return el;
+}
+
+const skeletonCard = () => html`<div class="lookup-card skeleton" aria-hidden="true">
+  <i class="sk" style="width:62%;height:18px"></i><i class="sk" style="width:40%;height:12px"></i>
+  <i class="sk" style="width:30%;height:16px"></i><i class="sk" style="width:100%;height:44px"></i></div>`;
+
+if (!cik) display(html`<div class="kicker">Company lookup</div><h1>Find a company or fund</h1>
+  <p class="dek">Every US startup and venture fund that filed a Form D since 2019. Each page shows its raises, every filing with a link to the SEC, the people named on the filings, and why it is or isn't tagged AI.</p>`);
+```
+
+```js
+const query = cik ? "" : view(searchBox());
+```
+
+```js
+const show = cik ? "All" : view(chips(SHOW));
 ```
 
 ```js
 const METRO_LABEL = metroScope(meta).labels;
-const directory = issuer ? [] : rows(await db.query(`
-  select cik, name, metro, city, state, kind, ai_tier, n_offerings::int as n_offerings, last_filing::varchar as last_filing
-  from issuers order by last_filing desc`));
-const found = issuer ? [] : view(Inputs.search(directory, {placeholder: "Company or fund name, city, state…", columns: ["name", "city", "state"]}));
+const lookupStatus = html`<p class="lookup-status" aria-live="polite">Loading the company list…</p>`;
+const lookupGrid = html`<div class="lookup-grid">${Array.from({length: 6}, skeletonCard)}</div>`;
+if (!cik) display(html`<div>${lookupStatus}${lookupGrid}</div>`);
 ```
 
 ```js
-if (!issuer) display(Inputs.table(found, {
-  rows: 20,
-  columns: ["name", "kind", "metro", "city", "state", "n_offerings", "last_filing", "ai_tier"],
-  header: {name: "Name", kind: "Type", metro: "Metro", city: "City", state: "State", n_offerings: "Raises", last_filing: "Last filing", ai_tier: "AI tier"},
-  format: {name: (n, i, data) => companyLink(data[i].cik, n), metro: (m) => METRO_LABEL[m] ?? "—", kind: (k) => (k ?? "").replace("_", " ")}
-}));
+function lookupCard(d) {
+  const years = Array.from(d.sold_by_year ?? [], Number);
+  const max = Math.max(0, ...years);
+  const last = d.first_year + years.length - 1;
+  const place = [titleCase(d.city), d.state].filter(Boolean).join(", ") + (METRO_LABEL[d.metro] ? ` · ${METRO_LABEL[d.metro]}` : "");
+  const spark = years.map((v, i) => `${d.first_year + i} ${v ? usd(v) : "none"}`).join(", ");
+  return html`<a class="lookup-card" href="./company?cik=${encodeURIComponent(d.cik)}">
+    <div><div class="lookup-name">${d.name}</div><div class="lookup-place">${place}</div></div>
+    <div class="lookup-badges"><span class="badge">${KIND_LABEL[d.kind] ?? (d.kind ?? "").replace("_", " ")}</span>${
+      d.ai_tier && d.ai_tier !== "none" ? html`<span class="badge ai">AI · ${d.ai_tier}</span>` : ""}</div>
+    <div class="lookup-stats">
+      <div><span>Raised (reported)</span><b>${usd(d.sold_total)}</b></div>
+      <div><span>Raises</span><b>${num(d.n_offerings)}</b></div>
+      <div class="spark" role="img" aria-label=${`Money raised by year of first filing: ${spark}`}>
+        <div class="spark-bars">${years.map((v) => html`<i class=${v ? "on" : ""} style=${`height:${v ? Math.max(3, Math.round((v / max) * 36)) : 1}px`}></i>`)}</div>
+        <div class="spark-axis"><span>${d.first_year}</span><span>${last}</span></div>
+      </div>
+    </div>
+    <div class="lookup-foot"><span>Last filed ${d.lf ?? "—"}</span><span class="go">View raises and filings →</span></div>
+  </a>`;
+}
+```
+
+```js
+if (!cik) {
+  // contains() rather than LIKE, so a typed % or _ is matched literally.
+  const q = query.trim().toLowerCase().replaceAll("'", "''");
+  const text = q ? `(contains(lower(name), '${q}') or contains(lower(city), '${q}') or lower(state) = '${q}')` : "true";
+  const kind = {Startups: "kind = 'operating_company'", Funds: "kind = 'fund'", "AI only": "ai_tier in ('strong', 'likely')"}[show] ?? "true";
+  const where = `${text} and ${kind}`;
+  // With a query, names that start with it come first; otherwise the latest filers.
+  const order = q ? `starts_with(lower(name), '${q}') desc, sold_total desc` : "last_filing desc, sold_total desc";
+  const [{n}] = rows(await db.query(`select count(*)::int as n from directory where ${where}`));
+  const found = rows(await db.query(`select *, last_filing::varchar as lf
+    from directory where ${where} order by ${order}, name limit 48`));
+  lookupStatus.textContent = n === 0 ? "No matches. Try part of the name, or a city."
+    : `${num(n)} ${n === 1 ? "match" : "matches"}${n > found.length ? `, showing the first ${found.length}` : ""} · ${q ? "names starting with your search first, then by money raised" : "most recent filers first"}`;
+  lookupGrid.replaceChildren(...found.map(lookupCard));
+}
+```
+
+```js
+if (cik && !issuer) display(html`<div class="kicker">Company lookup</div><h1>No company with that CIK</h1>
+  <p class="dek">CIK ${cik} is not a startup or venture fund in this data. <a href="./company">Search all companies</a>.</p>`);
 ```
 
 ```js

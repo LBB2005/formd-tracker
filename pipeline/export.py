@@ -176,6 +176,29 @@ PAGE_TABLES = {
         where o.is_startup_raise and o.is_new_in_window
           and o.ai_tier is not null and o.ai_tier <> 'none'
     """,
+    # Company lookup: one row per company for the search cards, with money raised per
+    # year of first filing since the window opens. Re-filed duplicates and implausible
+    # amounts are left out of the totals.
+    "directory": """
+        with raised as (
+            select cik, year(first_filed) as yr, sum(sold_latest) as sold
+            from DATA/offerings.parquet
+            where duplicate_of is null and not flag_implausible
+            group by all
+        ),
+        years as (
+            select unnest(range(min(year(first_filed)), max(year(first_filed)) + 1)) as yr
+            from DATA/offerings.parquet
+        )
+        select i.cik, i.name, i.city, i.state, i.metro, i.kind, i.ai_tier, i.n_offerings,
+               i.last_filing, coalesce(sum(r.sold), 0) as sold_total,
+               min(y.yr) as first_year,
+               list(coalesce(r.sold, 0) order by y.yr) as sold_by_year
+        from DATA/issuers.parquet i
+        cross join years y
+        left join raised r on r.cik = i.cik and r.yr = y.yr
+        group by all
+    """,
 }
 
 
