@@ -203,7 +203,8 @@ def collect() -> dict[str, dict]:
             else:
                 rec = {"answer": "unclear", "quote": "", "quote_verified": False,
                        "reason": f"batch {result.result.type}"}
-            rec.update(model=MODEL, prompt_version=b["prompt_version"],
+            # The record carries its CIK: ai_tag writes records, not this dict's keys.
+            rec.update(cik=result.custom_id, model=MODEL, prompt_version=b["prompt_version"],
                        prompt_sha=sha1(sent.encode()).hexdigest()[:12])
             answers[result.custom_id] = rec
         b["collected"] = True

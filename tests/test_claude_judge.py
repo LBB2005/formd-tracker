@@ -148,3 +148,26 @@ def test_unsent_companies_are_not_pending(tmp_path, monkeypatch):
     send, _ = cj.within_cap(items, cap=cj.estimate_usd(*items[0][1:]) * 2.5)
     assert cj.submit(send) == ["msgbatch_2"]
     assert cj.pending_ciks() == {"0", "1"}
+
+
+def test_collected_answers_carry_their_cik(tmp_path, monkeypatch):
+    """ai_tag writes the records themselves, so each must name its company."""
+    monkeypatch.setattr(cj, "STATE", tmp_path / "claude_batches.json")
+    cj.save_state({"batches": [{"id": "msgbatch_1", "collected": False, "prompt_version": cj.PROMPT_VERSION,
+                                "sent": {"0000000001": "text one", "0000000002": "text two"}}],
+                   "usage": {"input_tokens": 0, "output_tokens": 0}})
+    failed = type("R", (), {"type": "errored"})()
+
+    class FakeBatches:
+        def retrieve(self, batch_id):
+            return type("S", (), {"processing_status": "ended"})()
+
+        def results(self, batch_id):
+            return [type("Res", (), {"custom_id": c, "result": failed})() for c in ("0000000001", "0000000002")]
+
+    class FakeClient:
+        messages = type("M", (), {"batches": FakeBatches()})()
+
+    monkeypatch.setattr(cj.anthropic, "Anthropic", FakeClient)
+    got = cj.collect()
+    assert {cik: rec["cik"] for cik, rec in got.items()} == {"0000000001": "0000000001", "0000000002": "0000000002"}

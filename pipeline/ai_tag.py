@@ -395,7 +395,8 @@ def main(argv: list[str] | None = None) -> None:
                  and (c["strength"] == "weak" or cik in name_weak)
                  and not YC_AI_TAGS.search(" ".join((yc_hits.get(cik) or {}).get("tags") or []))]
 
-    llm = {r["cik"]: r for r in read_parquet_dicts("llm_labels.parquet")}
+    # A label without a CIK can't be tied to a company (and would collapse with the others).
+    llm = {r["cik"]: r for r in read_parquet_dicts("llm_labels.parquet") if r["cik"]}
     if args.judge == "claude":
         from pipeline import claude_judge
         if os.environ.get("ANTHROPIC_API_KEY") or env_key("ANTHROPIC_API_KEY"):
