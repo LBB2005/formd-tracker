@@ -4,7 +4,7 @@ title: Company lookup
 
 ```js
 import * as Plot from "npm:@observablehq/plot";
-import {C, usd, pct, num, rows, tile, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
+import {C, usd, pct, num, rows, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
 import {SHARDS} from "./data/company/shards.js";
 const meta = FileAttachment("data/meta.json").json();
 const cik = new URLSearchParams(location.search).get("cik");
@@ -17,7 +17,6 @@ const titleCase = (s) => (s ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpp
 ```js
 const key = cik ? cik.replace(/\D/g, "").padStart(10, "0") : null;
 const company = key ? (await SHARDS[key.slice(-2)]?.json())?.[key] ?? null : null;
-const issuer = company?.issuer ?? null;
 ```
 
 ```js
@@ -54,6 +53,14 @@ const skeletonCard = () => html`<div class="lookup-card skeleton" aria-hidden="t
 
 if (!cik) display(html`<div class="kicker">Company lookup</div><h1>Find a company or fund</h1>
   <p class="dek">Every US startup and venture fund that filed a Form D since 2019. Each page shows its raises, every filing with a link to the SEC, the people named on the filings, and why it is or isn't tagged AI.</p>`);
+
+// A company's page draws a placeholder at once and fills in when its file arrives.
+const profileRoot = html`<div class="profile" aria-busy="true">
+  <i class="sk" style="width:12rem;height:12px"></i><i class="sk" style="width:min(100%,28rem);height:46px;margin:0.9rem 0 0.7rem"></i>
+  <i class="sk" style="width:16rem;height:16px"></i>
+  <div class="pstats">${Array.from({length: 4}, () => html`<div><i class="sk" style="width:60%;height:11px"></i><i class="sk" style="width:45%;height:26px;margin-top:8px"></i></div>`)}</div>
+</div>`;
+if (cik) display(profileRoot);
 ```
 
 ```js
@@ -114,72 +121,154 @@ if (!cik) {
 ```
 
 ```js
-if (cik && !issuer) display(html`<div class="kicker">Company lookup</div><h1>No company with that CIK</h1>
-  <p class="dek">CIK ${cik} is not a startup or venture fund in this data. <a href="./company">Search all companies</a>.</p>`);
-```
+const fmtDate = (d) => d ? new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US",
+  {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"}) : "—";
+const year = (d) => (d ? String(d).slice(0, 4) : "");
+const plural = (n, word) => `${num(n)} ${n === 1 ? word : `${word}s`}`;
+const FIRST_SHOWN = 12;  // longer lists of raises or people fold the rest under "Show more"
 
-```js
-if (issuer) {
-  // Already sorted by export.py: raises by first filed, filings by date, people by name.
-  const offs = company.offerings ?? [];
-  const fil = company.filings ?? [];
-  const ppl = company.people ?? [];
-  const kind = (issuer.kind ?? "").replace("_", " ");
-  display(html`<div class="kicker">${kind} · ${METRO_LABEL[issuer.metro] ?? ""} · CIK <span class="mono">${issuer.cik}</span></div>
-    <h1>${issuer.name}</h1>
-    <p class="dek">${[titleCase(issuer.city), issuer.county_name && issuer.county_name.toLowerCase() !== (issuer.city ?? "").toLowerCase() ? `${issuer.county_name} County` : null].filter(Boolean).join(", ")}${issuer.domain ? html` · <a href="https://${issuer.domain}" target="_blank" rel="noopener">${issuer.domain}</a>` : ""}${issuer.yc_batch ? ` · Y Combinator ${issuer.yc_batch}` : ""}${issuer.former_names?.length ? ` · formerly ${Array.from(issuer.former_names).join(", ")}` : ""}</p>
-    <div class="receipt"><span>Source <b>SEC Form D</b></span><span>${num(fil.length)} filings · ${num(offs.length)} raises</span><span><a href="${issuer.edgar_url}" target="_blank" rel="noopener">All filings on EDGAR ↗</a></span></div>`);
+function folded(items, render, className, noun) {
+  const list = (xs) => html`<ol class=${className}>${xs.map(render)}</ol>`;
+  if (items.length <= FIRST_SHOWN) return list(items);
+  return html`<div>${list(items.slice(0, FIRST_SHOWN))}<details class="more">
+    <summary>Show ${num(items.length - FIRST_SHOWN)} more ${noun}</summary>${list(items.slice(FIRST_SHOWN))}</details></div>`;
+}
 
+// One raise on the timeline: amount sold, how much of the target that is, and its facts.
+function raiseItem(d) {
+  const target = d.offering_indefinite ? null : d.offering_amt;
+  const fill = target > 0 && d.sold_latest != null ? Math.min(1, d.sold_latest / target) : null;
+  const facts = [
+    d.offering_indefinite ? "no fixed target" : target != null ? `of ${usd(target)} target` : null,
+    d.investors_latest != null ? plural(d.investors_latest, "investor") : null,
+    d.first_sale_date ? `first sale ${fmtDate(d.first_sale_date)}` : null,
+    plural(d.n_filings, "filing")
+  ].filter(Boolean).join(" · ");
+  return html`<li class="raise">
+    <div class="raise-when">${fmtDate(d.first_filed)}</div>
+    <div class="raise-head"><span class="raise-amt">${usd(d.sold_latest)}</span><span class="raise-sold">sold</span>
+      ${d.inferred_stage && d.inferred_stage !== "unknown" ? html`<span class="badge">${STAGE_LABEL[d.inferred_stage]}</span>` : ""}
+      ${d.security_class ? html`<span class="badge">${d.security_class.replaceAll("_", " ")}</span>` : ""}</div>
+    ${fill == null ? "" : html`<div class="fill" role="img" aria-label=${`${pct(fill)} of the target sold`}><i style=${`width:${(100 * fill).toFixed(1)}%`}></i></div>`}
+    <div class="raise-meta">${facts} · ${secLink(d.filing_url, "Latest filing")}</div>
+  </li>`;
+}
+
+function personItem(p) {
+  const span = year(p.first_seen) === year(p.last_seen) ? year(p.first_seen) : `${year(p.first_seen)}–${year(p.last_seen)}`;
+  return html`<li class="person">
+    <div class="person-name">${p.display_name}</div>
+    <div class="person-role">${p.roles ?? ""}</div>
+    <div class="person-foot"><span>On filings ${span}</span>${p.is_entity ? html`<span class="badge">entity</span>` : ""}${
+      p.is_repeat_founder ? html`<span class="badge">repeat founder</span>` : ""}${
+      p.exec_turned_gp ? html`<span class="badge">startup exec → VC GP</span>` : ""}</div>
+  </li>`;
+}
+
+function aiCard(issuer) {
+  const tagged = issuer.ai_tier && issuer.ai_tier !== "none";
+  const evidence = (issuer.ai_evidence ?? "").split(" | ").filter(Boolean);
+  return html`<section class="pcard">
+    <div class="pcard-label">AI tag</div>
+    <div class="pcard-value">${tagged ? issuer.ai_tier[0].toUpperCase() + issuer.ai_tier.slice(1) : "Not tagged"}</div>
+    ${evidence.length ? html`<ul class="evidence">${evidence.map((e) => {
+      const i = e.indexOf(":");
+      return i > 0 ? html`<li><b>${e.slice(0, i)}</b>${e.slice(i + 1)}</li>` : html`<li>${e}</li>`;
+    })}</ul>` : html`<p class="pcard-note">${issuer.ai_checked
+      ? "No AI signal in its name, Y Combinator tags or homepage."
+      : "No AI signal in its name or Y Combinator tags. Its homepage hasn't been checked yet."}</p>`}
+    <p class="pcard-note"><a href="./methodology#ai-tag">How the AI tag works</a></p>
+  </section>`;
+}
+
+function momentumCard(issuer) {
+  const s = Math.round(issuer.capital_score);
+  return html`<section class="pcard">
+    <div class="pcard-label">Capital momentum</div>
+    <div class="pcard-value">${s}<small> / 100</small></div>
+    <div class="meter" role="img" aria-label=${`${s} out of 100`}><i style=${`width:${s}%`}></i></div>
+    <p class="pcard-note">Against ${num(issuer.peer_group_size)} peer startups (${issuer.size_band?.slice(2)}): how recent, how fast and how much bigger its raises are, and how quickly they fill. Confidence ${issuer.data_confidence}.</p>
+    <p class="pcard-note"><a href="./methodology#capital-momentum-score">How the score works</a></p>
+  </section>`;
+}
+
+function profileView({issuer, offerings, filings, people}) {
+  const offs = offerings ?? [];  // export.py sorts raises by first filed,
+  const fil = filings ?? [];     // filings by date,
+  const ppl = people ?? [];      // and people by name, entities last
   const total = offs.reduce((t, d) => t + (d.sold_latest ?? 0), 0);
-  display(html`<div class="tiles">
-    ${tile("Reported sold, all raises", usd(total), `${num(offs.length)} raises since ${offs[0]?.first_filed?.slice(0, 4) ?? "—"}`)}
-    ${tile("AI tag", issuer.ai_tier ?? "not tagged", issuer.ai_evidence ? issuer.ai_evidence.split(" | ").slice(0, 2).join(" · ") : "No AI signal in name, YC tags or homepage")}
-    ${tile("Capital momentum", issuer.capital_score == null ? "—" : String(Math.round(issuer.capital_score)), issuer.capital_score == null ? "Startups only" : `0–100 vs ${num(issuer.peer_group_size)} peers (${issuer.size_band?.slice(2)}) · confidence ${issuer.data_confidence}`)}
-    ${tile("Latest filing", issuer.last_filing ? String(issuer.last_filing).slice(0, 10) : "—", issuer.recency_days != null ? `${num(issuer.recency_days)} days before the data cut-off` : "")}
-  </div>`);
+  const latest = offs.at(-1);
+  const place = [titleCase(issuer.city), issuer.state].filter(Boolean).join(", ");
+  const kicker = [KIND_LABEL[issuer.kind] ?? (issuer.kind ?? "").replace("_", " "), METRO_LABEL[issuer.metro]].filter(Boolean).join(" · ");
+  const tagged = issuer.ai_tier && issuer.ai_tier !== "none";
+  const nodes = [
+    html`<a class="back" href="./company">← All companies</a>`,
+    html`<div class="kicker">${kicker} · CIK <span class="mono">${issuer.cik}</span></div>`,
+    html`<h1>${issuer.name}</h1>`,
+    issuer.yc_one_liner ? html`<p class="dek">${issuer.yc_one_liner}</p>` : "",
+    html`<div class="profile-meta">
+      <span>${place || "Location not given"}</span>
+      ${issuer.domain ? html`<a href="https://${issuer.domain}" target="_blank" rel="noopener">${issuer.domain} ↗</a>` : ""}
+      ${issuer.former_names?.length ? html`<span>Formerly ${Array.from(issuer.former_names).join(", ")}</span>` : ""}
+      <span class="lookup-badges">${tagged ? html`<span class="badge ai">AI · ${issuer.ai_tier}</span>` : ""}${
+        issuer.yc_batch ? html`<span class="badge">Y Combinator ${issuer.yc_batch}</span>` : ""}${
+        issuer.year_inc ? html`<span class="badge">Incorporated ${issuer.year_inc}</span>` : ""}</span>
+    </div>`,
+    html`<div class="pstats">
+      <div><span>Raised (reported)</span><b>${usd(total)}</b><small>across ${plural(offs.length, "raise")}</small></div>
+      <div><span>Latest raise</span><b>${latest ? usd(latest.sold_latest) : "—"}</b><small>${latest ? `first filed ${fmtDate(latest.first_filed)}` : ""}</small></div>
+      <div><span>First filing</span><b>${year(issuer.first_filing) || "—"}</b><small>${fmtDate(issuer.first_filing)}</small></div>
+      <div><span>Latest filing</span><b>${year(issuer.last_filing) || "—"}</b><small>${issuer.recency_days != null ? `${fmtDate(issuer.last_filing)} · ${num(issuer.recency_days)} days before the data ends` : fmtDate(issuer.last_filing)}</small></div>
+    </div>`,
+    html`<div class="receipt"><span>Source <b>SEC Form D</b></span><span>${plural(fil.length, "filing")} · ${plural(offs.length, "raise")}</span><span><a href="${issuer.edgar_url}" target="_blank" rel="noopener">All filings on EDGAR ↗</a></span></div>`,
+    html`<div class="pcards">${aiCard(issuer)}${issuer.capital_score == null ? "" : momentumCard(issuer)}</div>`
+  ];
 
-  if (fil.length > 1) {
-    display(html`<h2>Amount sold, filing by filing</h2><p>Each line is one raise; each dot is a filing (the original D or an amendment). A drop is a correction the issuer filed, kept as reported.</p>`);
-    display(resize((width) => Plot.plot({
-      width, height: 260, marginLeft: 60,
+  if (fil.length > 1) nodes.push(
+    html`<h2>Amount sold, filing by filing</h2>`,
+    html`<p>Each line is one raise; each dot is a filing (the original D or an amendment). A drop is a correction the issuer filed, kept as reported.</p>`,
+    resize((width) => Plot.plot({
+      width, height: 240, marginLeft: 60,
       style: {fontFamily: "var(--sans)", fontSize: "12px", background: "transparent"},
       x: {type: "utc", label: null}, y: {grid: true, label: null, tickFormat: (v) => usd(v)},
-      color: {legend: false, range: [C.s1, C.s2, C.s3, C.ink2]},
       marks: [
         Plot.ruleY([0], {stroke: "var(--baseline)"}),
         Plot.line(fil, {x: (d) => new Date(d.filing_date), y: "sold", z: "offering_id", stroke: C.s1, strokeWidth: 2, curve: "step-after"}),
         Plot.dot(fil, {x: (d) => new Date(d.filing_date), y: "sold", fill: C.s1, r: 4, stroke: C.surface, strokeWidth: 2,
-          tip: true, title: (d) => `${d.filing_date} · Form ${d.form}\nSold ${usd(d.sold)} of ${d.offering_amt ? usd(d.offering_amt) : "indefinite"}\nInvestors ${num(d.investors)}`})
+          tip: true, title: (d) => `${fmtDate(d.filing_date)} · Form ${d.form}\nSold ${usd(d.sold)} of ${d.offering_amt ? usd(d.offering_amt) : "indefinite"}\nInvestors ${num(d.investors)}`})
       ]
     })));
-  }
 
-  display(html`<h2>Raises</h2>`);
-  display(Inputs.table(offs, {
-    columns: ["first_filed", "first_sale_date", "kind", "inferred_stage", "security_class", "offering_amt", "sold_latest", "investors_latest", "n_filings", "exemptions", "filing_url"],
-    header: {first_filed: "First filed", first_sale_date: "First sale", kind: "Type", inferred_stage: "Stage (inferred)", security_class: "Security", offering_amt: "Target", sold_latest: "Sold", investors_latest: "Investors", n_filings: "Filings", exemptions: "Exemptions", filing_url: "Latest filing"},
-    format: {offering_amt: (v, i, d) => d[i].offering_indefinite ? "Indefinite" : usd(v), sold_latest: (v) => usd(v), inferred_stage: (s) => STAGE_LABEL[s] ?? "—", kind: (k) => (k ?? "").replace("_", " "), security_class: (s) => (s ?? "").replaceAll("_", " "), filing_url: (u) => secLink(u)},
-    rows: 12
-  }));
+  nodes.push(
+    html`<h2>Raises</h2>`,
+    html`<p>Newest first. The bar is the share of the target sold so far, as last reported. Stage is inferred from the raise's size.</p>`,
+    folded(offs.slice().reverse(), raiseItem, "raises", "raises"));
 
-  display(html`<h2>Every filing</h2>`);
-  display(Inputs.table(fil, {
-    columns: ["filing_date", "form", "accession", "sold", "sold_increment", "investors", "link_method"],
-    header: {filing_date: "Filed", form: "Form", accession: "Accession", sold: "Sold to date", sold_increment: "Change", investors: "Investors", link_method: "Linked by"},
-    format: {
-      accession: (a) => html`<a class="mono" target="_blank" rel="noopener" href="https://www.sec.gov/Archives/edgar/data/${Number(issuer.cik)}/${a.replaceAll("-", "")}/">${a}</a>`,
-      sold: (v) => usd(v), sold_increment: (v, i, d) => v == null ? "—" : `${v >= 0 ? "+" : ""}${usd(v)}${d[i].is_correction ? " (correction)" : ""}`,
-      link_method: (m) => (m ?? "").replaceAll("_", " ")
-    },
-    rows: 15
-  }));
+  if (ppl.length) nodes.push(
+    html`<h2>People on the filings</h2>`,
+    html`<p>Names and roles as filed: executive officers, directors and promoters.</p>`,
+    folded(ppl, personItem, "people", "people"));
 
-  display(html`<h2>People and entities on the filings</h2><p>Names and roles as filed (executive officer, director, promoter).</p>`);
-  display(Inputs.table(ppl, {
-    columns: ["display_name", "roles", "first_seen", "last_seen", "is_repeat_founder", "exec_turned_gp"],
-    header: {display_name: "Name", roles: "Roles", first_seen: "First seen", last_seen: "Last seen", is_repeat_founder: "Repeat founder", exec_turned_gp: "Startup exec → VC GP"},
-    format: {is_repeat_founder: (b) => (b ? "yes" : ""), exec_turned_gp: (b) => (b ? "yes" : ""), first_seen: (d) => String(d).slice(0, 10), last_seen: (d) => String(d).slice(0, 10)},
-    rows: 12
-  }));
+  nodes.push(html`<details class="all-filings"><summary>Every filing (${num(fil.length)}): dates, amendments and links to each on the SEC site</summary>${
+    Inputs.table(fil, {
+      columns: ["filing_date", "form", "accession", "sold", "sold_increment", "investors", "link_method"],
+      header: {filing_date: "Filed", form: "Form", accession: "Accession", sold: "Sold to date", sold_increment: "Change", investors: "Investors", link_method: "Linked by"},
+      format: {
+        accession: (a) => html`<a class="mono" target="_blank" rel="noopener" href="https://www.sec.gov/Archives/edgar/data/${Number(issuer.cik)}/${a.replaceAll("-", "")}/">${a}</a>`,
+        sold: (v) => usd(v), sold_increment: (v, i, d) => v == null ? "—" : `${v >= 0 ? "+" : ""}${usd(v)}${d[i].is_correction ? " (correction)" : ""}`,
+        link_method: (m) => (m ?? "").replaceAll("_", " ")
+      },
+      rows: 15
+    })}</details>`);
+  return nodes;
+}
+```
+
+```js
+if (cik) {
+  profileRoot.replaceChildren(...(company ? profileView(company) : [
+    html`<div class="kicker">Company lookup</div>`, html`<h1>No company with that CIK</h1>`,
+    html`<p class="dek">CIK ${cik} is not a startup or venture fund in this data. <a href="./company">Search all companies</a>.</p>`]));
+  profileRoot.removeAttribute("aria-busy");
 }
 ```

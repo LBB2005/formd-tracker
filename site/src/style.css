@@ -152,6 +152,58 @@ a.lookup-card:focus-visible { outline: 2px solid var(--series-1); outline-offset
 @keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 
+/* Company page: header facts, stat strip, AI and momentum cards, raise timeline, people. */
+.back { display: inline-block; font-size: 0.85rem; margin-bottom: 1rem; }
+.profile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.1rem; font-size: 0.92rem; color: var(--ink-2); margin: 0.7rem 0 0; }
+/* Four stats: two by two, or one row of four when the page is wide enough. */
+.profile { container-type: inline-size; }
+.pstats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1.6rem 0 0; border-top: 1px solid var(--hairline); }
+.pstats > div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.9rem 1rem 0.9rem 0; min-width: 0; }
+.pstats > div:nth-child(even) { border-left: 1px solid var(--hairline); padding-left: 1rem; }
+.pstats > div:nth-child(n + 3) { border-top: 1px solid var(--hairline); }
+@container (min-width: 720px) {
+  .pstats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pstats > div + div { border-left: 1px solid var(--hairline); padding-left: 1rem; }
+  .pstats > div:nth-child(n + 3) { border-top: 0; }
+}
+.pstats span { font-size: 0.78rem; color: var(--ink-2); }
+.pstats b { font-size: 1.85rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.pstats small { font-size: 0.78rem; color: var(--ink-muted); }
+.profile .receipt { margin-top: 0; }
+.pcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0.9rem; }
+.pcard { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 12px; padding: 1rem 1.15rem; min-width: 0; }
+.pcard-label { font-size: 0.82rem; color: var(--ink-2); }
+.pcard-value { font-size: 1.6rem; font-weight: 600; line-height: 1.2; margin: 0.15rem 0 0.5rem; }
+.pcard-value small { font-size: 0.95rem; font-weight: 400; color: var(--ink-muted); }
+.pcard-note { font-size: 0.84rem; color: var(--ink-2); margin: 0.5rem 0 0; }
+.evidence { margin: 0; padding: 0; list-style: none; font-size: 0.86rem; }
+.evidence li { padding: 0.35rem 0; border-top: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.evidence b { font-weight: 500; margin-right: 0.35rem; }
+.evidence b::first-letter { text-transform: uppercase; }
+.meter, .fill { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.meter i, .fill i { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
+.raises { list-style: none; margin: 1rem 0 0; padding: 0 0 0 1.4rem; border-left: 2px solid var(--grid); }
+.raise { position: relative; padding: 0 0 1.5rem; max-width: 640px; }
+.raise::before { content: ""; position: absolute; left: calc(-1.4rem - 6px); top: 0.3rem; width: 10px; height: 10px;
+  border-radius: 50%; background: var(--series-1); box-shadow: 0 0 0 3px var(--page); }
+.raise-when { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.raise-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.5rem; margin: 0.2rem 0 0.5rem; }
+.raise-amt { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.raise-sold { font-size: 0.85rem; color: var(--ink-2); margin-right: 0.3rem; }
+.raise-meta { font-size: 0.84rem; color: var(--ink-2); margin-top: 0.45rem; }
+.people { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 0.7rem; }
+.person { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 10px; padding: 0.75rem 0.9rem; min-width: 0; }
+.person-name { font-weight: 600; overflow-wrap: anywhere; }
+.person-role { font-size: 0.84rem; color: var(--ink-2); margin-top: 0.1rem; }
+.person-foot { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; align-items: center; font-size: 0.78rem; color: var(--ink-muted); margin-top: 0.5rem; }
+.more, .all-filings { margin-top: 0.8rem; }
+.more summary, .all-filings summary { cursor: pointer; color: var(--series-1); font-size: 0.9rem; padding: 0.4rem 0; }
+.all-filings { margin-top: 2.6rem; border-top: 1px solid var(--hairline); padding-top: 0.6rem; }
+.all-filings summary { font-size: 1rem; }
+@media (max-width: 640px) {
+  .pstats b { font-size: 1.45rem; }
+}
+
 /* Table-heavy pages use the full content width. */
 #observablehq-main { max-width: 1240px; }
 
