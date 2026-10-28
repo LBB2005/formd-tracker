@@ -5,23 +5,19 @@ title: Company lookup
 ```js
 import * as Plot from "npm:@observablehq/plot";
 import {C, usd, pct, num, rows, tile, secLink, STAGE_LABEL, metroScope} from "./components/viz.js";
+import {SHARDS} from "./data/company/shards.js";
 const meta = FileAttachment("data/meta.json").json();
 const cik = new URLSearchParams(location.search).get("cik");
-// Search reads only the slim directory; one company's page also loads its raises,
-// filings and people.
-const db = cik ? DuckDBClient.of({
-  offerings: FileAttachment("data/offerings.parquet"),
-  issuers: FileAttachment("data/issuers.parquet"),
-  filings: FileAttachment("data/filings.parquet"),
-  people: FileAttachment("data/people.parquet")
-}) : DuckDBClient.of({directory: FileAttachment("data/directory.parquet")});
+// Search queries the slim directory in DuckDB. One company's page needs no database: it
+// reads its own entry from the company file for the CIK's last two digits (~1% of companies).
+const db = cik ? null : DuckDBClient.of({directory: FileAttachment("data/directory.parquet")});
 const titleCase = (s) => (s ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 ```
 
 ```js
-const issuer = cik ? rows(await db.query(`select * replace (first_filing::varchar as first_filing,
-    last_filing::varchar as last_filing) from issuers
-    where cik = '${cik.replace(/\D/g, "").padStart(10, "0")}'`))[0] : null;
+const key = cik ? cik.replace(/\D/g, "").padStart(10, "0") : null;
+const company = key ? (await SHARDS[key.slice(-2)]?.json())?.[key] ?? null : null;
+const issuer = company?.issuer ?? null;
 ```
 
 ```js
@@ -124,13 +120,10 @@ if (cik && !issuer) display(html`<div class="kicker">Company lookup</div><h1>No 
 
 ```js
 if (issuer) {
-  const offs = rows(await db.query(`select *, first_filed::varchar as ff, last_filed::varchar as lf,
-      first_sale_date::varchar as fs from offerings where cik = '${issuer.cik}' order by first_filed`));
-  const fil = rows(await db.query(`select f.*, f.filing_date::varchar as fd from filings f
-      where cik = '${issuer.cik}' order by filing_date, accession`));
-  const ppl = rows(await db.query(`select display_name, roles, first_seen::varchar as first_seen, last_seen::varchar as last_seen,
-      is_repeat_founder, exec_turned_gp, is_platform_staff, is_entity
-      from people where cik = '${issuer.cik}' order by is_entity, display_name`));
+  // Already sorted by export.py: raises by first filed, filings by date, people by name.
+  const offs = company.offerings ?? [];
+  const fil = company.filings ?? [];
+  const ppl = company.people ?? [];
   const kind = (issuer.kind ?? "").replace("_", " ");
   display(html`<div class="kicker">${kind} · ${METRO_LABEL[issuer.metro] ?? ""} · CIK <span class="mono">${issuer.cik}</span></div>
     <h1>${issuer.name}</h1>
@@ -139,7 +132,7 @@ if (issuer) {
 
   const total = offs.reduce((t, d) => t + (d.sold_latest ?? 0), 0);
   display(html`<div class="tiles">
-    ${tile("Reported sold, all raises", usd(total), `${num(offs.length)} raises since ${offs[0]?.ff?.slice(0, 4) ?? "—"}`)}
+    ${tile("Reported sold, all raises", usd(total), `${num(offs.length)} raises since ${offs[0]?.first_filed?.slice(0, 4) ?? "—"}`)}
     ${tile("AI tag", issuer.ai_tier ?? "not tagged", issuer.ai_evidence ? issuer.ai_evidence.split(" | ").slice(0, 2).join(" · ") : "No AI signal in name, YC tags or homepage")}
     ${tile("Capital momentum", issuer.capital_score == null ? "—" : String(Math.round(issuer.capital_score)), issuer.capital_score == null ? "Startups only" : `0–100 vs ${num(issuer.peer_group_size)} peers (${issuer.size_band?.slice(2)}) · confidence ${issuer.data_confidence}`)}
     ${tile("Latest filing", issuer.last_filing ? String(issuer.last_filing).slice(0, 10) : "—", issuer.recency_days != null ? `${num(issuer.recency_days)} days before the data cut-off` : "")}
@@ -154,25 +147,25 @@ if (issuer) {
       color: {legend: false, range: [C.s1, C.s2, C.s3, C.ink2]},
       marks: [
         Plot.ruleY([0], {stroke: "var(--baseline)"}),
-        Plot.line(fil, {x: (d) => new Date(d.fd), y: "sold", z: "offering_id", stroke: C.s1, strokeWidth: 2, curve: "step-after"}),
-        Plot.dot(fil, {x: (d) => new Date(d.fd), y: "sold", fill: C.s1, r: 4, stroke: C.surface, strokeWidth: 2,
-          tip: true, title: (d) => `${d.fd} · Form ${d.form}\nSold ${usd(d.sold)} of ${d.offering_amt ? usd(d.offering_amt) : "indefinite"}\nInvestors ${num(d.investors)}`})
+        Plot.line(fil, {x: (d) => new Date(d.filing_date), y: "sold", z: "offering_id", stroke: C.s1, strokeWidth: 2, curve: "step-after"}),
+        Plot.dot(fil, {x: (d) => new Date(d.filing_date), y: "sold", fill: C.s1, r: 4, stroke: C.surface, strokeWidth: 2,
+          tip: true, title: (d) => `${d.filing_date} · Form ${d.form}\nSold ${usd(d.sold)} of ${d.offering_amt ? usd(d.offering_amt) : "indefinite"}\nInvestors ${num(d.investors)}`})
       ]
     })));
   }
 
   display(html`<h2>Raises</h2>`);
   display(Inputs.table(offs, {
-    columns: ["ff", "fs", "kind", "inferred_stage", "security_class", "offering_amt", "sold_latest", "investors_latest", "n_filings", "exemptions", "filing_url"],
-    header: {ff: "First filed", fs: "First sale", kind: "Type", inferred_stage: "Stage (inferred)", security_class: "Security", offering_amt: "Target", sold_latest: "Sold", investors_latest: "Investors", n_filings: "Filings", exemptions: "Exemptions", filing_url: "Latest filing"},
+    columns: ["first_filed", "first_sale_date", "kind", "inferred_stage", "security_class", "offering_amt", "sold_latest", "investors_latest", "n_filings", "exemptions", "filing_url"],
+    header: {first_filed: "First filed", first_sale_date: "First sale", kind: "Type", inferred_stage: "Stage (inferred)", security_class: "Security", offering_amt: "Target", sold_latest: "Sold", investors_latest: "Investors", n_filings: "Filings", exemptions: "Exemptions", filing_url: "Latest filing"},
     format: {offering_amt: (v, i, d) => d[i].offering_indefinite ? "Indefinite" : usd(v), sold_latest: (v) => usd(v), inferred_stage: (s) => STAGE_LABEL[s] ?? "—", kind: (k) => (k ?? "").replace("_", " "), security_class: (s) => (s ?? "").replaceAll("_", " "), filing_url: (u) => secLink(u)},
     rows: 12
   }));
 
   display(html`<h2>Every filing</h2>`);
   display(Inputs.table(fil, {
-    columns: ["fd", "form", "accession", "sold", "sold_increment", "investors", "link_method"],
-    header: {fd: "Filed", form: "Form", accession: "Accession", sold: "Sold to date", sold_increment: "Change", investors: "Investors", link_method: "Linked by"},
+    columns: ["filing_date", "form", "accession", "sold", "sold_increment", "investors", "link_method"],
+    header: {filing_date: "Filed", form: "Form", accession: "Accession", sold: "Sold to date", sold_increment: "Change", investors: "Investors", link_method: "Linked by"},
     format: {
       accession: (a) => html`<a class="mono" target="_blank" rel="noopener" href="https://www.sec.gov/Archives/edgar/data/${Number(issuer.cik)}/${a.replaceAll("-", "")}/">${a}</a>`,
       sold: (v) => usd(v), sold_increment: (v, i, d) => v == null ? "—" : `${v >= 0 ? "+" : ""}${usd(v)}${d[i].is_correction ? " (correction)" : ""}`,

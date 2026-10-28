@@ -9,8 +9,10 @@ site/src/downloads/  national offerings and issuers as Parquet and gzipped CSV f
 """
 
 import csv
+import itertools
 import json
 import re
+import shutil
 from datetime import datetime, timezone
 
 import duckdb
@@ -97,8 +99,7 @@ TABLES = {
 
 # Page-specific slices of the tables above, so a page downloads only the rows and columns
 # it reads (DuckDB-WASM loads each attached file whole). Each reads the shared file just
-# written, so values and definitions match it exactly. The shared files stay for the
-# Company lookup page and for reuse.
+# written, so values and definitions match it exactly. The shared files stay for reuse.
 PAGE_TABLES = {
     # Overview: startup raises, the columns the AI-share charts read.
     "startup_raises": """
@@ -201,6 +202,52 @@ PAGE_TABLES = {
     """,
 }
 
+# A company's page: its issuer row plus these lists of its rows (columns, order), read from
+# the files just written. Companies are split into one JSON file per last two digits of the
+# CIK, so a page downloads about 1% of the data instead of four national files.
+COMPANY_LISTS = {
+    "offerings": ("offering_id, first_filed, last_filed, first_sale_date, kind, inferred_stage, "
+                  "security_class, offering_amt, offering_indefinite, sold_latest, investors_latest, "
+                  "n_filings, exemptions, filing_url", "first_filed, offering_id"),
+    "filings": ("accession, offering_id, filing_date, form, link_method, sold, offering_amt, "
+                "investors, sold_increment, is_correction", "filing_date, accession"),
+    "people": ("display_name, roles, first_seen, last_seen, is_repeat_founder, exec_turned_gp, "
+               "is_platform_staff, is_entity", "is_entity, display_name"),
+}
+
+
+def company_shard(cik: str) -> str:
+    """Which company file holds this CIK (the page computes the same from the URL)."""
+    return cik[-2:]
+
+
+def write_company_files(con, data_dir=SITE_DATA) -> int:
+    """data/company/NN.json, {cik: {issuer, offerings, filings, people}}, and shards.js,
+    which attaches them so the page gets content-hashed URLs. Returns the company count."""
+    out = data_dir / "company"
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True)
+    lists = ",\n".join(
+        f"{t} as (select cik, list(struct_pack({cols}) order by {order}) as {t} "
+        f"from '{data_dir / t}.parquet' group by cik)" for t, (cols, order) in COMPANY_LISTS.items())
+    rows = con.execute(f"""
+        with {lists}
+        select i.cik, to_json(struct_pack(issuer := i, {", ".join(f"{t} := {t}.{t}" for t in COMPANY_LISTS)}))::varchar
+        from '{data_dir / "issuers"}.parquet' i
+        {" ".join(f"left join {t} using (cik)" for t in COMPANY_LISTS)}
+        order by right(i.cik, 2), i.cik
+    """).fetchall()
+    shards = []
+    for shard, group in itertools.groupby(rows, key=lambda r: company_shard(r[0])):
+        (out / f"{shard}.json").write_text("{" + ",".join(f'"{cik}":{j}' for cik, j in group) + "}")
+        shards.append(shard)
+    (out / "shards.js").write_text(
+        "// Written by pipeline/export.py: the company files, keyed by the CIK's last two digits.\n"
+        'import {FileAttachment} from "observablehq:stdlib";\n\n'
+        "export const SHARDS = {\n"
+        + "".join(f'  "{s}": FileAttachment("./{s}.json"),\n' for s in shards) + "};\n")
+    return len(rows)
+
 
 def main() -> None:
     SITE_DATA.mkdir(parents=True, exist_ok=True)
@@ -219,6 +266,10 @@ def main() -> None:
             n = con.execute(f"select count(*) from '{SITE_DATA / name}.parquet'").fetchone()[0]
             kb = (SITE_DATA / f"{name}.parquet").stat().st_size / 1e3
             print(f"  data/{name}.parquet  {n:,} rows, {kb:,.0f} kB (page slice)")
+        n = write_company_files(con)
+        files = list((SITE_DATA / "company").glob("*.json"))
+        mb = sum(f.stat().st_size for f in files) / 1e6
+        print(f"  data/company/*.json  {n:,} companies in {len(files)} files, {mb:,.0f} MB")
 
         # National downloads.
         for name, query in {
