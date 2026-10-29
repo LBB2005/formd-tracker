@@ -211,6 +211,43 @@ a.lookup-card:focus-visible { outline: 2px solid var(--series-1); outline-offset
   .pstats b { font-size: 1.45rem; }
 }
 
+/* Tables: hand-written and markdown tables and Inputs.table share one look, a rounded card
+   with small mono headers, like the stat strip and cards. */
+#observablehq-main table:not(form table) { width: 100%; max-width: 860px; border-collapse: separate; border-spacing: 0;
+  background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 14px; overflow: hidden;
+  font: 0.92rem/1.45 var(--sans); margin: 1.2rem 0 1.6rem; }
+#observablehq-main table:not(form table) tr { border-bottom: 0; }
+#observablehq-main table:not(form table) th { font: 500 11px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-muted); background: color-mix(in srgb, var(--ink) 3%, var(--surface-1)); padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid var(--hairline); }
+#observablehq-main table:not(form table) td { padding: 0.75rem 1.1rem; color: var(--ink-2); border-bottom: 1px solid var(--hairline); }
+#observablehq-main table:not(form table) td:first-child { color: var(--ink); }
+#observablehq-main table:not(form table) tbody tr:last-child td { border-bottom: 0; }
+#observablehq-main table:not(form table) tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+/* Label and result: the result is the figure to read, right-aligned. */
+#observablehq-main table.results th:last-child { text-align: right; }
+#observablehq-main table.results td:last-child { text-align: right; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* On a phone each row stacks: label above its value, one row per block. */
+@media (max-width: 640px) {
+  #observablehq-main table:not(form table), #observablehq-main table:not(form table) :is(thead, tbody, tr, td) { display: block; }
+  #observablehq-main table:not(form table) thead tr { display: flex; justify-content: space-between; gap: 1rem; }
+  #observablehq-main table:not(form table) th { background: none; border: 0; padding: 0; }
+  #observablehq-main table:not(form table) thead { background: color-mix(in srgb, var(--ink) 3%, var(--surface-1));
+    border-bottom: 1px solid var(--hairline); padding: 0.7rem 1rem; }
+  #observablehq-main table:not(form table) td { border: 0; padding: 0.15rem 1rem; }
+  #observablehq-main table:not(form table) td:first-child { padding-top: 0.75rem; font-weight: 500; }
+  #observablehq-main table:not(form table) td:last-child { padding-bottom: 0.75rem; }
+  #observablehq-main table:not(form table) tbody tr:not(:last-child) { border-bottom: 1px solid var(--hairline); }
+  #observablehq-main table.results td:last-child { text-align: left; }
+}
+form[class*="-table"] { border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface-1); }
+form[class*="-table"] table { font: 13px/1.35 var(--sans); }
+form[class*="-table"] thead th { font: 500 11px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted);
+  background: color-mix(in srgb, var(--ink) 3%, var(--surface-1)); padding-top: 0.6rem; padding-bottom: 0.6rem; }
+form[class*="-table"] td, form[class*="-table"] th { border-bottom-color: var(--hairline) !important; padding-top: 0.45rem; padding-bottom: 0.45rem; }
+form[class*="-table"] thead tr th { border-bottom: 1px solid var(--hairline); }
+form[class*="-table"] tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+
 /* Table-heavy pages use the full content width. */
 #observablehq-main { max-width: 1240px; }
 

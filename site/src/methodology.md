@@ -69,7 +69,7 @@ Parallel vehicles ("Fund I" and "Fund I-A") are counted once. An **emerging mana
 A **startup raise** is an operating company selling equity or a SAFE/convertible. Established companies are excluded: a CIK below 1,400,000 (EDGAR registration before about 2007) combined with incorporation more than five years before filing.
 
 ```js
-display(html`<table><thead><tr><th>Hand check of these calls</th><th>Result</th></tr></thead><tbody>
+display(html`<table class="results"><thead><tr><th>Hand check of these calls</th><th>Result</th></tr></thead><tbody>
   <tr><td>Fund vs company (${num(cls.length)} reviewed rows)</td><td>${cls.length ? pct(clsKind / cls.length) + " correct" : "pending: review/classification_sample.csv"}</td></tr>
   <tr><td>SPV vs blind-pool, among funds (${num(clsFunds.length)})</td><td>${clsFunds.length ? pct(clsVeh / clsFunds.length) + " correct" : "pending"}</td></tr>
 </tbody></table>`)
@@ -111,7 +111,7 @@ The tier follows from the evidence:
 Charts count strong and likely. Every company carries its evidence trail.
 
 ```js
-display(html`<table><thead><tr><th>AI tag accuracy on a hand-labelled sample</th><th>Result</th></tr></thead><tbody>
+display(html`<table class="results"><thead><tr><th>AI tag accuracy on a hand-labelled sample</th><th>Result</th></tr></thead><tbody>
   <tr><td>Labelled companies</td><td>${ai.length ? num(ai.length) : "pending: review/ai_label_sample.csv"}</td></tr>
   <tr><td>Precision: of companies tagged AI, share that really are</td><td>${tp + fp ? pct(tp / (tp + fp)) : "pending"}</td></tr>
   <tr><td>Recall: of real AI companies, share the tag finds</td><td>${recallW != null ? pct(recallW) + ` (weighted; ${pct(tp / (tp + fn))} unweighted)` : tp + fn ? pct(tp / (tp + fn)) + " (unweighted)" : "pending"}</td></tr>
