@@ -76,14 +76,11 @@
    "id": "msgbatch_0153kJgby28BNH8za95fXAFZ",
    "submitted_at": "2026-11-07T15:34:40+00:00",
    "prompt_version": "v3-claude-quote",
-   "collected": false,
-   "sent": {
-    "0002162824": "Agency Tool Co: Robotics Infrastructure | Over-the-air (OTA) software updates and fleet management built for robotics. Ship code, containers and configs to field robots 20x faster than a docker pull. Agency Tool Co: Robotics Infrastructure | Field Robots Faster. | Existing build and deployment systems weren\u2019t built for robots. | Over-the-air updates for one robot on your bench or thousands in the field.\nAgency Tool Co: Robotics Infrastructure Home Blog Company Log In Join the waitlist >_ CLOSE \u00c3\u0097 01 Home 02 Blog 03 Company 04 Log In Join the waitlist >_ PRIVACY TERMS Field Robots Faster. Agency Tool Company gives robotics teams reliable infrastructure to build, deploy, manage, and operate real-world robots, so your team can focus on the things customers care about. WHY 00 \u00e2\u0080\u0094 THE PROBLEM Existing build and deployment systems weren\u2019t built for robots. Robots are more like pets than cattle. Cloud and IoT tooling assumes disposable, identical, always-connected machines. Fielded robots break those assumptions. Deployment challenges bottleneck developer iteration and field rollouts alike. The friction and risk make operations and customer teams wary of shipping updates. THE SOLUTION We build tools for the reality of robotics. Grande-44 working hard \u00c2\u00b7 Courtesy of Burro DEPLOY 01 \u00e2\u0080\u0094 ATC DEPLOY Built alongside teams putting robots into production environments. IN BETA TODAY WITH Over-the-air updates for one robot on your bench or thousands in the field. EASY TO START One line to install No agents to babysit, no infrastructure project. Install on a robot and ship your first update in minutes. $ curl -fsSL \u00e2\u00a3\u0092\u00e2\u00a1\u00b7\u00e2\u00a1\u00a9\u00e2\u00a2\u008c\u00e2\u00a1\u0093\u00e2\u00a1\u00ae the install host, withheld until launch, | sh Install link coming soon LIGHTNING FAST 20x faster than a docker pull Smart delta updates and compression move only what changed, so even 10GB+ images update in a fraction of the time. DOCKER PULL ATC DEPLOY \u00e2\u0088\u009295% FLEXIBLE Works with your setup Smart defaults out of the box but flexible to suit the reality of robotics. ROS 2 LEROBOT DIM OS CUDA ZENOH ETC. With fast CLI tools for engineering and an ergonomic web UI for operations, ATC Deploy is the over-the-air update tool that works from a single robot to thou"
-   }
+   "collected": true
   }
  ],
  "usage": {
-  "input_tokens": 8217479,
-  "output_tokens": 702075
+  "input_tokens": 8218798,
+  "output_tokens": 702157
  }
 }
