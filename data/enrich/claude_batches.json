@@ -89,6 +89,16 @@
    "submitted_at": "2026-11-11T17:00:24+00:00",
    "prompt_version": "v3-claude-quote",
    "collected": true
+  },
+  {
+   "id": "msgbatch_01Aa9xqhqNdBBGx7TuNXqoEy",
+   "submitted_at": "2026-11-13T17:03:52+00:00",
+   "prompt_version": "v3-claude-quote",
+   "collected": false,
+   "sent": {
+    "0002164296": "Loti - Rebuilding Lives. | We\u2019re licensed public adjusters, designers, technologists \u2014 and fellow survivors. Founded after the 2019 Kincade Fire, Loti helps homeowners recover fully with expert guidance, organized claims, and faster payouts. \n\nWe\u2019ve been there. We can help. | When A Home Is Disrupted, Everything Changes. | We Understand. Let's Get Started. | We Understand. Let's Get Started.\nLoti - Rebuilding Lives. CONTACT ABOUT TECHNOLOGIES SERVICES HOME INCIDENTS learn main Contact About Us Technologies Services Main Incident Hub LIVES REBUILDING Your browser does not support the video tag. LIVES REBUILDING Call us toll-free 888-488-LOTI Loti helps homeowners rebuild, replace, and move forward after unexpected loss, with support that understands how personal and high-pressure recovery can be. Founded by survivors and built by licensed public adjusters, insurance professionals, and technologists, we\u2019re trusted for a homeowner-first approach across every type of incident. We bring together what homeowners rarely get in one place: the world\u2019s most comprehensive free recovery library, best-in-class public adjusting services, and modern technology that makes claims clearer and easier to resolve. You can start anywhere, whether learning for free, working with licensed experts, or exploring the technologies we\u2019re launching throughout 2026. When A Home Is Disrupted, Everything Changes. Your browser does not support the video tag. We Understand. Let's Get Started. We Understand. Let's Get Started. Our Disaster Playbook. Our Disaster Playbook organizes recovery into manageable phases, with a handful of actionable steps for each stage. Every phase includes supporting RallyBack articles and free AI enabled tools to help you understand your options and move forward. Explore EVERY INCIDENT 01 Explore Not all disasters or claims are the same. Loti helps homeowners understand how different incidents affect documentation, strategy, and recovery, tailoring each approach with the right expertise and tools from the start. Every Covered Loss. Every Major Incident. EVERY INCIDENT 01 Explore the Incident Hub to learn how different losses are handled and what to expect based on",
+    "0002164684": "TRACKSYNC | The Common Operating Picture for Complex Operations | TRACKSYNC is the common operating picture for live sites: crew check-in, vehicles, zones, tasks and muster in one command center, with a free iPhone app for the crew. For events, venues, construction and endurance. TRACKSYNC | The Common Operating Picture for Complex Operations Crew check-in, vehicles, zones, tasks and muster in one command center, with a free iPhone app for the crew. Know who is on site, who confirmed and who is missing.\nTRACKSYNC | The Common Operating Picture for Complex Operations"
+   }
   }
  ],
  "usage": {
