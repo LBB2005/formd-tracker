@@ -124,14 +124,11 @@
    "id": "msgbatch_01F1iWzHQ3JSro4cmXL59E7T",
    "submitted_at": "2026-11-21T16:42:29+00:00",
    "prompt_version": "v3-claude-quote",
-   "collected": false,
-   "sent": {
-    "0002166021": "InferenceMD | InferenceMD correlates radiologists' dictations with their real-time navigation through volumetric medical scans to infer the location of each dictated finding. | We turn everyday radiology workflow into labeled imaging data. | Downstream Applications | Who we are\nInferenceMD Get in touch We turn everyday radiology workflow into labeled imaging data. 0:00 Downstream Applications Our patent-pending technology captures previously overlooked information about radiologists\u2019 attention, visual search patterns, and spatial diagnostic reasoning without disrupting routine workflow or requiring specialized hardware. Label data at scale The PACS turns every dictated case into labeled data for AI model development. Automatic \u201ctumor board\u201d presentations Every radiology report now has a visual recap. Peer into the mind of a radiologist. Multiple revisits to a region = diagnostic uncertainty. Slow scrolling while dictating = mental concentration. Navigation trajectories show diagnostic reasoning. See how radiologists gather visual evidence of cause and effect. Detect automation bias. Did the radiologist navigate around each finding in the AI-drafted reports? Or was the review cursory? \u2190 \u2192 Who we are Mike McGovern Co-founder and Chief Executive Officer Machine learning engineer who spent eight years at Boston Scientific, where he led a team that built and shipped real-time AI running on a medical device. Founder of Synergy Platforms, a consulting firm. Inventor on three published U.S. patent applications ( 1 , 2 , 3 ). LinkedIn David Vu, MD Co-founder and Chief Medical Officer Board-certified neuroradiologist trained at Harvard Medical School, UC San Diego, and Massachusetts General Hospital, with over two decades of clinical work at Scripps. Co-founder of V-Star Data, a medical data annotation company. Solo inventor of two medical technology patents. LinkedIn Get in touch Meeting at RSNA 2026 in Chicago, November 29 to December 2? Leave your details and we'll follow up. Leave this empty We'll reply from [email protected] . Your details are used"
-   }
+   "collected": true
   }
  ],
  "usage": {
-  "input_tokens": 8258617,
-  "output_tokens": 705339
+  "input_tokens": 8259818,
+  "output_tokens": 705699
  }
 }
